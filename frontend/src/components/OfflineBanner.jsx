@@ -16,7 +16,7 @@ export function OfflineBanner() {
     >
       <WifiOff className="w-3.5 h-3.5 text-amber shrink-0" />
       <span className="text-[11px] text-amber">
-        Offline — showing your last clue. Submitting resumes when you reconnect.
+        Signal lost — showing your last clue. Submissions resume when you reconnect.
       </span>
     </div>
   )

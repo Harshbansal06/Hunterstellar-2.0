@@ -47,7 +47,7 @@ export function describeError(err, ctx = 'state') {
   if (!status) {
     return {
       kind: 'network',
-      title: "Can't reach the server",
+      title: 'No signal from the network',
       body: 'Check your signal and try again.',
       retry: RETRY.AUTO,
     }

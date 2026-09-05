@@ -45,7 +45,7 @@ export default class ErrorBoundary extends Component {
         <div className="flex flex-col items-center text-center gap-3 max-w-[320px]">
           <h1 className="font-display text-xl text-text-primary">Something went wrong</h1>
           <p className="text-sm text-text-muted">
-            Your progress is saved on the server — nothing is lost.
+            Your progress is saved on the network — nothing is lost.
           </p>
           <button
             onClick={this.reset}

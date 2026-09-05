@@ -25,7 +25,7 @@ export function Layout({ children, title = 'Your Journey', notifications = [] })
   }
 
   function handleLogout() {
-    if (!window.confirm('Log out? Your progress stays on the server.')) return
+    if (!window.confirm('Log out? Your progress stays safe.')) return
     logout()
     navigate('/login', { replace: true })
   }

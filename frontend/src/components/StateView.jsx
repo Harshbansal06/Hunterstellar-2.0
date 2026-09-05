@@ -76,7 +76,7 @@ export function StaleChip({ lastUpdated, now, onRetry }) {
   return (
     <div className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-amber/40 bg-amber/10">
       <span className="text-[11px] text-amber">
-        {seconds != null ? `Last updated ${seconds}s ago · ` : ''}Reconnecting…
+        {seconds != null ? `Last updated ${seconds}s ago · ` : ''}Restoring link…
       </span>
       {onRetry && (
         <button

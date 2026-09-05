@@ -31,7 +31,7 @@ export function PuzzleCard({
   return (
     <div className="w-full flex flex-col gap-7 px-6 pt-2 pb-8">
       <div className="flex flex-col gap-5">
-        <h2 className="font-display text-xl text-text-secondary tracking-widest">Challenge</h2>
+        <h2 className="font-display text-xl text-text-secondary tracking-widest">Station Challenge</h2>
         {question ? (
           <p className="text-text-secondary text-[17px] leading-relaxed whitespace-pre-line">
             {question}
@@ -71,7 +71,7 @@ export function PuzzleCard({
           onChange={(e) => update(e.target.value)}
           disabled={disabled}
           autoComplete="off"
-          placeholder="Enter your answer here"
+          placeholder="Enter the answer"
           aria-label="Your answer"
           className="w-full h-[60px] bg-surface border border-surface-alt rounded-md px-5 text-text-primary text-base placeholder:text-text-muted outline-none focus:border-accent disabled:opacity-50"
         />
@@ -90,7 +90,7 @@ export function PuzzleCard({
           disabled={loading || disabled || !answer.trim()}
           className="w-full h-[52px] bg-[#f6f6f6] text-text-inverse rounded-md font-display text-lg disabled:opacity-60"
         >
-          {loading ? 'Verifying...' : 'Submit Answer'}
+          {loading ? 'Verifying...' : 'Transmit Answer'}
         </button>
       </form>
     </div>

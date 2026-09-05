@@ -146,7 +146,7 @@ export default function Login() {
                 disabled={!canSubmit}
                 className="w-full h-[52px] bg-[#f6f6f6] text-text-inverse rounded-md font-display text-lg disabled:opacity-60"
               >
-                {loading ? 'Decrypting...' : 'Join Team'}
+                {loading ? 'Decrypting...' : 'Board Shuttlecraft'}
               </button>
             </form>
           </div>
