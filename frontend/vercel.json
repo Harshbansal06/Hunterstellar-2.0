@@ -1,4 +1,5 @@
 {
+  "installCommand": "npm ci && npm install --no-save --no-audit --no-fund $(node .github/scripts/native-optionals.mjs)",
   "rewrites": [
     {
       "source": "/(.*)",
