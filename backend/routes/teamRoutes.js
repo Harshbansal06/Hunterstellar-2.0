@@ -23,7 +23,7 @@ const router = express.Router();
  * verifyLimiter window in middleware/rateLimit.js, which is a separate
  * anti-script control that happens to also be measured in minutes.
  */
-const LOCKOUT_MINUTES = 7;
+const LOCKOUT_MINUTES = 5;
 
 router.post("/team/register", async (req, res) => {
   if (req.headers["x-webhook-secret"] !== process.env.WEBHOOK_SECRET) {
