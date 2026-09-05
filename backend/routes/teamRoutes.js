@@ -5,7 +5,11 @@ const teamModel = require("../db/teamModel");
 const { requireAuth } = require("../middleware/auth");
 const { requireEventActive } = require("../middleware/eventStatus");
 const { verifyLimiter } = require("../middleware/rateLimit");
-const { getTeamStateForUser, invalidateTeamStateCache, buildRandomRoute } = require("../utils/teamState");
+const {
+  getTeamStateForUser,
+  invalidateTeamStateCache,
+  buildRandomRoute,
+} = require("../utils/teamState");
 const { sendWelcomeEmail } = require("../utils/email");
 const { isCurrentSession, SESSION_REPLACED } = require("../utils/session");
 
@@ -26,7 +30,7 @@ router.post("/team/register", async (req, res) => {
     return res.sendStatus(403);
   }
 
-  const { team_name : requested_name, team_leader, members, password, email } = req.body;
+  const { team_name: requested_name, team_leader, members, password, email } = req.body;
   let team_name = requested_name;
   if (!team_name || !password || !email) {
     return res.status(400).json({
@@ -43,14 +47,12 @@ router.post("/team/register", async (req, res) => {
     return res.status(500).json({ error: "Could not build team route" });
   }
   const existing = await teamModel.getByTeamName(team_name);
-  if (existing.error)
-    return res.status(500).json({ error: existing.error.message });
+  if (existing.error) return res.status(500).json({ error: existing.error.message });
   if (existing.data) {
     for (let i = 0; i < 5; i++) {
-       const candidate = `${team_name}_${Math.floor(Math.random() * 9000 + 1000)}`;
+      const candidate = `${team_name}_${Math.floor(Math.random() * 9000 + 1000)}`;
       const check = await teamModel.getByTeamName(candidate);
-      if (check.error)
-        return res.status(500).json({ error: check.error.message });
+      if (check.error) return res.status(500).json({ error: check.error.message });
       if (!check.data) {
         team_name = candidate;
         break;
@@ -135,10 +137,7 @@ router.post(
       return res.status(500).json({ error: "Could not fetch island" });
     }
 
-    if (
-      enteredCode.trim().toLowerCase() ===
-      island.correct_code.trim().toLowerCase()
-    ) {
+    if (enteredCode.trim().toLowerCase() === island.correct_code.trim().toLowerCase()) {
       const isLastStop = currentStop.question_id === null;
       const newProgress = isLastStop ? team.progress + 1 : team.progress;
       const newStage = isLastStop ? "awaiting_code" : "awaiting_puzzle";
@@ -189,10 +188,15 @@ router.post(
       .eq("id", teamId);
     invalidateTeamStateCache(teamId);
 
+    // Every failure reason carries `state`, so the client adopts the fresh
+    // locked state through the same path as a success and never has to
+    // reconcile a wrong code with a stale poll.
+    const state = await getTeamStateForUser(teamId);
     return res.json({
       success: false,
       reason: "wrong_code",
       lock_until: lockUntil,
+      state,
     });
   },
 );
@@ -250,8 +254,7 @@ router.post(
     }
 
     if (
-      enteredAns.trim().toLowerCase() ===
-      question.question_answer.trim().toLowerCase()
+      enteredAns.trim().toLowerCase() === question.question_answer.trim().toLowerCase()
     ) {
       const newProgress = team.progress + 1;
       // Same reasoning as verify-code: a correct answer cannot happen while

@@ -2,8 +2,9 @@ const request = require("supertest");
 const app = require("../app");
 const { signToken } = require("./helpers/tokens");
 
-
-jest.mock("../db/supabaseClient", () => require("./helpers/mockSupabase").createMockSupabase());
+jest.mock("../db/supabaseClient", () =>
+  require("./helpers/mockSupabase").createMockSupabase(),
+);
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
 const mockSupabase = require("../db/supabaseClient");
@@ -45,17 +46,39 @@ describe("Admin routes", () => {
     notice: null,
     last_correct_at: null,
   };
-  const island1 = { id: "i1", correct_code: "CODE1", clue_statement: "Clue 1", is_common_room: false };
-  const island2 = { id: "i2", correct_code: "CODE2", clue_statement: "Clue 2", is_common_room: false };
-  const question1 = { id: "q1", question_statement: "Q1", question_answer: "ANS1", domain: "test" };
-  const question2 = { id: "q2", question_statement: "Q2", question_answer: "ANS2", domain: "test" };
+  const island1 = {
+    id: "i1",
+    correct_code: "CODE1",
+    clue_statement: "Clue 1",
+    is_common_room: false,
+  };
+  const island2 = {
+    id: "i2",
+    correct_code: "CODE2",
+    clue_statement: "Clue 2",
+    is_common_room: false,
+  };
+  const question1 = {
+    id: "q1",
+    question_statement: "Q1",
+    question_answer: "ANS1",
+    domain: "test",
+  };
+  const question2 = {
+    id: "q2",
+    question_statement: "Q2",
+    question_answer: "ANS2",
+    domain: "test",
+  };
 
   beforeEach(() => {
     mockSupabase.__testing.setTable("teams", [teamA, teamB]);
     mockSupabase.__testing.setTable("islands", [island1, island2]);
     mockSupabase.__testing.setTable("questions", [question1, question2]);
     mockSupabase.__testing.setTable("announcements", []);
-    mockSupabase.__testing.setTable("event_config", [{ id: 1, started_at: null, duration_minutes: 120, ended_at: null }]);
+    mockSupabase.__testing.setTable("event_config", [
+      { id: 1, started_at: null, duration_minutes: 120, ended_at: null },
+    ]);
   });
 
   test("admin secret works (requireAdmin passes)", async () => {
@@ -110,7 +133,7 @@ describe("Admin routes", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
 
-    const team = mockSupabase.__testing.getTable("teams").find(t => t.id === "team-b");
+    const team = mockSupabase.__testing.getTable("teams").find((t) => t.id === "team-b");
     expect(team.status).toBe("active");
     expect(team.lock_until).toBeNull();
   });
@@ -133,7 +156,7 @@ describe("Admin routes", () => {
     expect(res.body.success).toBe(true);
     expect(res.body.message).toBe("Good luck!");
 
-    const team = mockSupabase.__testing.getTable("teams").find(t => t.id === "team-a");
+    const team = mockSupabase.__testing.getTable("teams").find((t) => t.id === "team-a");
     expect(team.notice).toBe("Good luck!");
   });
 
@@ -183,7 +206,9 @@ describe("Admin routes", () => {
     expect(res.body.success).toBe(true);
     expect(res.body.ended_at).toBeDefined();
 
-    const config = mockSupabase.__testing.getTable("event_config").find(c => c.id === 1);
+    const config = mockSupabase.__testing
+      .getTable("event_config")
+      .find((c) => c.id === 1);
     expect(config.ended_at).toBe(res.body.ended_at);
   });
 });

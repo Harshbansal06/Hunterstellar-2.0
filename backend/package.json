@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
-    "test": "jest"
+    "test": "jest --testPathIgnorePatterns \"tests/load.*\\.test\\.js$\"",
+    "test:load": "jest --testTimeout=180000 --runInBand tests/load",
+    "test:all": "jest --testTimeout=180000 --runInBand",
+    "test:watch": "jest --watch --testPathIgnorePatterns \"tests/load.*\\.test\\.js$\""
   },
   "keywords": [],
   "author": "",
@@ -31,8 +34,16 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "testMatch": ["**/tests/**/*.test.js"],
-    "setupFiles": ["<rootDir>/tests/setup.js"],
-    "verbose": true
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "setupFiles": [
+      "<rootDir>/tests/setup.js"
+    ],
+    "clearMocks": true,
+    "restoreMocks": true
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

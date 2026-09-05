@@ -2,7 +2,9 @@ const request = require("supertest");
 const app = require("../app");
 const { signToken } = require("./helpers/tokens");
 
-jest.mock("../db/supabaseClient", () => require("./helpers/mockSupabase").createMockSupabase());
+jest.mock("../db/supabaseClient", () =>
+  require("./helpers/mockSupabase").createMockSupabase(),
+);
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
 // These suites push hundreds of requests through the app at once and run
@@ -68,12 +70,14 @@ describe(TEAM_COUNT + " concurrent teams", () => {
     mockSupabase.__testing.setTable("islands", islands);
     mockSupabase.__testing.setTable("questions", questions);
     mockSupabase.__testing.setTable("announcements", []);
-    mockSupabase.__testing.setTable("event_config", [{
-      id: 1,
-      started_at: new Date(Date.now() - 1000).toISOString(),
-      duration_minutes: 120,
-      ended_at: null,
-    }]);
+    mockSupabase.__testing.setTable("event_config", [
+      {
+        id: 1,
+        started_at: new Date(Date.now() - 1000).toISOString(),
+        duration_minutes: 120,
+        ended_at: null,
+      },
+    ]);
 
     invalidateAllTeamStateCache();
     return teams;

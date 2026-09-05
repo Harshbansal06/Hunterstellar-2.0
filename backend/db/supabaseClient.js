@@ -1,33 +1,33 @@
-require('dotenv').config();
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require("@supabase/supabase-js");
+const { readEnv } = require("../config/env");
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
+/**
+ * The service-role Supabase client.
+ *
+ * Always a real client, never null. It used to export `null` when the
+ * credentials were missing, which pushed the failure out to roughly a dozen
+ * `supabase.from(...)` call sites that had no guard, turning a configuration
+ * mistake into a TypeError and then a generic 500 on every request. `readEnv`
+ * now refuses to boot instead, so everything downstream can assume this
+ * exists.
+ *
+ * Service role means row-level security is bypassed, so this client must never
+ * be handed to the browser. The frontend has its own anon-key client in
+ * src/api/supabase.js.
+ *
+ * Tests never reach this file: they `jest.mock('../db/supabaseClient')` with
+ * the hand-rolled mock in tests/helpers/mockSupabase.js.
+ */
+const env = readEnv();
 
-let supabase = null;
+const supabase = createClient(env.supabaseUrl, env.supabaseKey, {
+  auth: {
+    // No browser here, so there is no session to persist and no token to
+    // refresh on a timer. Leaving these on keeps a needless interval alive in
+    // a serverless function.
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+});
 
-if (supabaseUrl && supabaseKey) {
-  supabase = createClient(supabaseUrl, supabaseKey);
-} else {
-  console.warn('Supabase credentials not configured.');
-}
-
-async function fetchData() {
-  if (!supabase) {
-    return { data: null, error: { message: 'Supabase client not configured.' } };
-  }
-
-  const { data, error } = await supabase
-    .from('teams')
-    .select('*');
-
-  if (error) {
-    console.error('Error fetching data:', error);
-    return { data: null, error };
-  }
-
-  console.log('Data:', data);
-  return { data, error: null };
-}
-// fetchData();
 module.exports = supabase;

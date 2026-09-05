@@ -2,8 +2,16 @@ const request = require("supertest");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
+/**
+ * Every limiter this module exports has to be stubbed, not just the ones this
+ * file exercises: authRoutes destructures `loginIpLimiter` and hands it to
+ * `router.post`, so omitting it passes `undefined` as a handler and Express
+ * throws "argument handler must be a function" at import time. That took the
+ * whole suite down before a single test ran, which is why it went unnoticed.
+ */
 jest.mock("../middleware/rateLimit", () => ({
   loginLimiter: (req, res, next) => next(),
+  loginIpLimiter: (req, res, next) => next(),
   verifyLimiter: (req, res, next) => next(),
   adminLimiter: (req, res, next) => next(),
 }));
@@ -12,7 +20,7 @@ const app = require("../app");
 const { invalidateAllTeamStateCache } = require("../utils/teamState");
 
 jest.mock("../db/supabaseClient", () =>
-  require("./helpers/mockSupabase").createMockSupabase()
+  require("./helpers/mockSupabase").createMockSupabase(),
 );
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
@@ -88,17 +96,13 @@ beforeEach(() => {
 
 describe("POST /api/login", () => {
   test("400 when team_name is missing", async () => {
-    const res = await request(app)
-      .post("/api/login")
-      .send({ password: PASSWORD });
+    const res = await request(app).post("/api/login").send({ password: PASSWORD });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/team_name and password/i);
   });
 
   test("400 when password is missing", async () => {
-    const res = await request(app)
-      .post("/api/login")
-      .send({ team_name: "Celestials" });
+    const res = await request(app).post("/api/login").send({ team_name: "Celestials" });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/team_name and password/i);
   });
@@ -124,7 +128,7 @@ describe("POST /api/login", () => {
     expect(res.body.error).toMatch(/invalid password/i);
   });
 
-  test("200 with valid credentials — returns user and signed JWT", async () => {
+  test("200 with valid credentials, returns user and signed JWT", async () => {
     const res = await request(app)
       .post("/api/login")
       .send({ team_name: "Celestials", password: PASSWORD });
@@ -182,11 +186,18 @@ describe("POST /api/login", () => {
 
   test("500 when session update fails", async () => {
     const failBuilder = {
-      select() { return this; },
-      eq() { return this; },
+      select() {
+        return this;
+      },
+      eq() {
+        return this;
+      },
       single: () => Promise.resolve({ data: null, error: { message: "update failed" } }),
       then: (resolve, reject) =>
-        Promise.resolve({ data: null, error: { message: "update failed" } }).then(resolve, reject),
+        Promise.resolve({ data: null, error: { message: "update failed" } }).then(
+          resolve,
+          reject,
+        ),
     };
 
     let updateCallCount = 0;
@@ -220,9 +231,7 @@ describe("POST /api/login", () => {
       data: puzzleState,
       error: null,
     }));
-    mockSupabase.__testing.setTable("teams", [
-      { ...baseTeam, password: hashedPassword },
-    ]);
+    mockSupabase.__testing.setTable("teams", [{ ...baseTeam, password: hashedPassword }]);
 
     const res = await request(app)
       .post("/api/login")

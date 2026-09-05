@@ -1,0 +1,368 @@
+@import 'tailwindcss';
+
+/*
+ * Ben 10 palette: Omnitrix green on near-black, white type, Null Void violet.
+ *
+ * The green is the whole identity, so it is the only hue that means "this is
+ * a control" -- accent, focus, active nav, progress. Everything else is
+ * greyscale except three signals (violet / amber / red), which is what keeps
+ * the green reading as green instead of as one colour among six.
+ *
+ * Grounds are warm-neutral near-black rather than mid-grey: heavy grain needs
+ * headroom, and #262626 left none.
+ */
+@theme {
+  --color-bg: #0b0d0b;
+  --color-surface: #131614;
+  --color-surface-alt: #1e231f;
+  --color-border: #2c332d;
+
+  --color-text-primary: #f2f5f2;
+  --color-text-secondary: #c9d1ca;
+  --color-text-muted: #8a968c;
+  --color-text-inverse: #0b0d0b;
+
+  /* Omnitrix green. `accent` is a touch deeper than the dial itself so body
+     text on it clears AA; `teal` is the brighter dial green, for glyphs and
+     rules only -- never for text. */
+  --color-accent: #6fe04b;
+  --color-accent-hover: #8af06a;
+  --color-accent-active: #57c238;
+  --color-nav-active: #17301a;
+  --color-teal: #9cff57;
+  --color-teal-muted: #6b8f5c;
+
+  --color-rust: #6fe04b;
+  --color-void-gold: #c9a227;
+  --color-green: #6fe04b;
+  --color-red: #f0503c;
+  --color-amber: #f5a623;
+
+  --font-sans: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-grotesk: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-bebas: 'Bebas Neue', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+@theme {
+  /* Null Void violet. Deliberately the scarcest colour in the app -- it marks
+     the terminal stop and nothing else, so seeing it means the rules changed.
+     Lifted from #8B5CF6, which measured 4.30:1 on --color-surface and 3.77:1
+     on --color-surface-alt: under AA for the 13-14px body copy it labels. This
+     reads 7.17:1 on bg and 5.87:1 on surface-alt. */
+  --color-indigo: #a78bfa;
+
+  /*
+   * MOTION TOKENS
+   *
+   * Three curves, named by job rather than by number. Registered in @theme so
+   * Tailwind emits `ease-enter` / `ease-exit` / `ease-standard` utilities and
+   * so the values land on :root for var() and for lib/motion.js to mirror.
+   *
+   * Enter decelerates (arrival). Exit accelerates (departure). Standard eases
+   * both ends. If the product's feel changes, it changes here, once.
+   */
+  --ease-enter: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/*
+ * Durations. Plain custom properties because Tailwind v4 has no `duration-*`
+ * theme namespace to register them under.
+ *
+ * The three bands are perceptual, not stylistic: under 100ms the eye has not
+ * landed, so motion can only acknowledge and never narrate. 150 to 300ms is
+ * where a product's tempo is legible. Past 300ms a wait needs a skeleton or an
+ * interrupt, which is why `expressive` is reserved for a moment a player sees
+ * once or twice in the whole event.
+ *
+ * Mirrored in src/lib/motion.js, which warns in dev if the two drift.
+ */
+:root {
+  --duration-instant: 120ms;
+  --duration-base: 220ms;
+  --duration-expressive: 640ms;
+  --stagger-step: 50ms;
+}
+
+/* One noise texture, reused by every grained surface. Defining it once as a
+   custom property keeps .film-grain, .card-noise and .display-grunge in sync
+   and costs ~1KB total instead of a bitmap per surface. */
+:root {
+  --noise-texture: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2Ij48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuOSIgbnVtT2N0YXZlcz0iNCIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjxmZUNvbG9yTWF0cml4IHR5cGU9Imx1bWluYW5jZVRvQWxwaGEiLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbm9pc2UpIi8+PC9zdmc+');
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fadeIn {
+  animation: fadeIn 200ms ease;
+}
+
+/* These three were referenced across the app but never defined, so the
+   animations were silently inert. */
+@keyframes spinSlow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spinSlow 18s linear infinite;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-slide-up {
+  animation: slideUp 220ms ease-out;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+.shake {
+  animation: shake 320ms ease-in-out;
+}
+
+@keyframes pulseSoft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.animate-pulse-soft {
+  animation: pulseSoft 1.4s ease-in-out infinite;
+}
+
+/*
+ * Semantic motion. Each class is one job and each changes exactly one channel.
+ *
+ * The rule these encode: only enter, exit and reorder genuinely require
+ * motion. Hover, focus and active states are carried by colour and weight, so
+ * they get no entry here.
+ */
+
+/* Sheets rise from the bottom edge and leave through the same edge. Reverse
+   retraces the forward axis, or the spatial model the player built breaks. */
+@keyframes sheetIn {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes sheetOut {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+.motion-sheet-in {
+  animation: sheetIn var(--duration-base) var(--ease-enter) forwards;
+}
+.motion-sheet-out {
+  animation: sheetOut var(--duration-base) var(--ease-exit) forwards;
+}
+
+@keyframes scrimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes scrimOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.motion-scrim-in {
+  animation: scrimIn var(--duration-base) var(--ease-standard) forwards;
+}
+.motion-scrim-out {
+  animation: scrimOut var(--duration-base) var(--ease-standard) forwards;
+}
+
+/* Under 100ms is acknowledgment. This is the whole press feedback: one
+   channel, not scale plus colour plus shadow stacked on one event. */
+.motion-press {
+  transition: opacity var(--duration-instant) var(--ease-standard);
+}
+.motion-press:active:not(:disabled) {
+  opacity: 0.72;
+}
+
+/* Row-local disclosure. grid-template-rows animates without measuring, so an
+   expanding card needs no height JS and no layout thrash. */
+.motion-disclose {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--duration-base) var(--ease-standard);
+}
+.motion-disclose[data-open='true'] {
+  grid-template-rows: 1fr;
+}
+.motion-disclose > * {
+  overflow: hidden;
+}
+
+/*
+ * Reduced motion is a designed alternative, not the primary spec with the
+ * animation deleted.
+ *
+ * Fades are kept: they carry enter and exit, and removing them loses the state
+ * change rather than softening it. Transforms, rotation and shake are the ones
+ * that trigger vestibular symptoms, so those are replaced. Durations collapse
+ * toward instant.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-instant: 1ms;
+    --duration-base: 1ms;
+    --duration-expressive: 1ms;
+    --stagger-step: 0ms;
+  }
+
+  .animate-spin-slow,
+  .shake {
+    animation: none;
+  }
+
+  .animate-slide-up,
+  .motion-sheet-in {
+    animation: fadeIn 1ms linear forwards;
+  }
+  .motion-sheet-out {
+    animation: scrimOut 1ms linear forwards;
+  }
+
+  .animate-fadeIn,
+  .animate-pulse-soft {
+    animation-duration: 1ms;
+  }
+
+  .motion-disclose {
+    transition-duration: 1ms;
+  }
+}
+
+/* Distressed display headline, per the design comps. */
+.display-grunge {
+  font-family: var(--font-bebas);
+  letter-spacing: 0.02em;
+  line-height: 0.92;
+  text-transform: uppercase;
+  position: relative;
+  display: inline-block;
+  /*
+   * The ::after noise overlay is absolutely positioned to `inset: 0`, so it
+   * paints the element's whole box. `inline-block` was meant to keep that box
+   * hugging the glyphs, but every heading using this class is a flex item,
+   * which gets blockified and then stretched to the cross size. The box became
+   * full-width and the overlay rendered as a rectangle trailing off past the
+   * text.
+   *
+   * `fit-content` is enough on its own: flex `stretch` only applies when the
+   * cross size is `auto`, so an explicit width opts out. Deliberately NOT
+   * `align-self: start`, which would left-align the centred headings.
+   */
+  width: fit-content;
+  max-width: 100%;
+}
+.display-grunge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--noise-texture);
+  background-size: 128px 128px;
+  mix-blend-mode: multiply;
+  opacity: 0.35;
+}
+
+/* Noise-textured card surface used for leaderboard rows and earned fragments. */
+.card-noise {
+  position: relative;
+  background-color: var(--color-surface);
+  isolation: isolate;
+}
+.card-noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--noise-texture);
+  background-size: 256px 256px;
+  opacity: 0.05;
+  border-radius: inherit;
+}
+
+/*
+ * Renders noise behind an element's own content but above its background
+ * color. Apply directly to a screen's background surface (not to buttons,
+ * cards, or other foreground elements) alongside `relative`.
+ */
+.grain-frame {
+  isolation: isolate;
+}
+
+.grain-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2Ij48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuOSIgbnVtT2N0YXZlcz0iNCIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjxmZUNvbG9yTWF0cml4IHR5cGU9Imx1bWluYW5jZVRvQWxwaGEiLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbm9pc2UpIi8+PC9zdmc+');
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* Painted on <html>, not on a React wrapper. The wrapper does not exist yet
+   while a lazy route chunk is loading, and that gap rendered as a full white
+   frame between login and the first clue on an otherwise dark app.
+   color-scheme keeps native scrollbars and form controls dark as well. */
+html {
+  background-color: var(--color-bg);
+  color-scheme: dark;
+}

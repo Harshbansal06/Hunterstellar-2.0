@@ -13,7 +13,7 @@ export function Badge({ status }) {
 
   return (
     <span
-      className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+      className={`inline-block text-[12px] font-semibold px-2 py-0.5 rounded-md border ${
         styles[status] || styles.active
       }`}
     >

@@ -52,7 +52,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem(TOKEN_KEY, data.token)
       localStorage.setItem(USER_KEY, JSON.stringify(data.user))
     } catch {
-      /* private mode — the session still works for this tab */
+      /* private mode, and the session still works for this tab */
     }
     return data
   }, [])
@@ -75,7 +75,12 @@ export function AuthProvider({ children }) {
     setUser((prev) => {
       // Bail out when nothing changed, so consumers depending on `user`
       // identity do not re-run on every poll.
-      if (prev && prev.id === next.id && prev.progress === next.progress && prev.status === next.status) {
+      if (
+        prev &&
+        prev.id === next.id &&
+        prev.progress === next.progress &&
+        prev.status === next.status
+      ) {
         return prev
       }
       try {
@@ -88,7 +93,9 @@ export function AuthProvider({ children }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, token, loading: false, login, logout, updateUser }}>
+    <AuthContext.Provider
+      value={{ user, token, loading: false, login, logout, updateUser }}
+    >
       {children}
     </AuthContext.Provider>
   )

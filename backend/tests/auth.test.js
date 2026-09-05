@@ -3,7 +3,9 @@ const jwt = require("jsonwebtoken");
 const app = require("../app");
 const { signToken, signExpiredToken, signInvalidToken } = require("./helpers/tokens");
 
-jest.mock("../db/supabaseClient", () => require("./helpers/mockSupabase").createMockSupabase());
+jest.mock("../db/supabaseClient", () =>
+  require("./helpers/mockSupabase").createMockSupabase(),
+);
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
 const mockSupabase = require("../db/supabaseClient");
@@ -36,7 +38,10 @@ describe("Auth middleware", () => {
       team_leader: "Alice",
       members: ["Alice", "Bob"],
       password: "$2a$10$hashed",
-      route: [{ island_id: "i1", question_id: "q1" }, { island_id: "i2", question_id: null }],
+      route: [
+        { island_id: "i1", question_id: "q1" },
+        { island_id: "i2", question_id: null },
+      ],
       email: "a@test.com",
       progress: 0,
       stage: "awaiting_code",
@@ -47,8 +52,17 @@ describe("Auth middleware", () => {
       last_correct_at: null,
     };
     mockSupabase.__testing.setTable("teams", [team]);
-    mockSupabase.__testing.setTable("islands", [{ id: "i1", correct_code: "CODE1", clue_statement: "Clue 1", is_common_room: false }]);
-    mockSupabase.__testing.setTable("questions", [{ id: "q1", question_statement: "Q1", question_answer: "ANS1", domain: "test" }]);
+    mockSupabase.__testing.setTable("islands", [
+      {
+        id: "i1",
+        correct_code: "CODE1",
+        clue_statement: "Clue 1",
+        is_common_room: false,
+      },
+    ]);
+    mockSupabase.__testing.setTable("questions", [
+      { id: "q1", question_statement: "Q1", question_answer: "ANS1", domain: "test" },
+    ]);
     mockSupabase.__testing.setTable("announcements", []);
 
     const res = await request(app)
@@ -92,7 +106,12 @@ describe("Auth middleware", () => {
       ]);
       mockSupabase.__testing.setTable("announcements", []);
       mockSupabase.__testing.setTable("event_config", [
-        { id: 1, started_at: new Date(Date.now() - 1000).toISOString(), duration_minutes: 120, ended_at: null },
+        {
+          id: 1,
+          started_at: new Date(Date.now() - 1000).toISOString(),
+          duration_minutes: 120,
+          ended_at: null,
+        },
       ]);
     }
 
@@ -128,8 +147,12 @@ describe("Auth middleware", () => {
       seedTeams(["Rust Runners"]);
 
       const spellings = [
-        "Rust Runners", "rust runners", "RUST RUNNERS",
-        " Rust Runners ", "RuSt RuNnErS", "  rust runners",
+        "Rust Runners",
+        "rust runners",
+        "RUST RUNNERS",
+        " Rust Runners ",
+        "RuSt RuNnErS",
+        "  rust runners",
       ];
       const results = [];
       for (const name of spellings) results.push(await login(name, "wrong-password"));
@@ -150,5 +173,4 @@ describe("Auth middleware", () => {
       expect(results.filter((r) => r.status === 429).length).toBeGreaterThan(0);
     });
   });
-
 });

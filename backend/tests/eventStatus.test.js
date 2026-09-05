@@ -2,7 +2,9 @@ const request = require("supertest");
 const app = require("../app");
 const { signToken } = require("./helpers/tokens");
 
-jest.mock("../db/supabaseClient", () => require("./helpers/mockSupabase").createMockSupabase());
+jest.mock("../db/supabaseClient", () =>
+  require("./helpers/mockSupabase").createMockSupabase(),
+);
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
 const mockSupabase = require("../db/supabaseClient");
@@ -28,8 +30,18 @@ describe("Event status middleware (requireEventActive)", () => {
     notice: null,
     last_correct_at: null,
   };
-  const island = { id: "i1", correct_code: "CODE1", clue_statement: "Clue 1", is_common_room: false };
-  const question = { id: "q1", question_statement: "Q1", question_answer: "ANS1", domain: "test" };
+  const island = {
+    id: "i1",
+    correct_code: "CODE1",
+    clue_statement: "Clue 1",
+    is_common_room: false,
+  };
+  const question = {
+    id: "q1",
+    question_statement: "Q1",
+    question_answer: "ANS1",
+    domain: "test",
+  };
 
   function setupBase() {
     mockSupabase.__testing.setTable("teams", [team]);
@@ -41,7 +53,9 @@ describe("Event status middleware (requireEventActive)", () => {
   test("cannot verify before event starts (started_at in future)", async () => {
     setupBase();
     const futureStart = new Date(Date.now() + 3600000).toISOString();
-    mockSupabase.__testing.setTable("event_config", [{ id: 1, started_at: futureStart, duration_minutes: 120, ended_at: null }]);
+    mockSupabase.__testing.setTable("event_config", [
+      { id: 1, started_at: futureStart, duration_minutes: 120, ended_at: null },
+    ]);
 
     const res = await request(app)
       .post("/api/team/verify-code")
@@ -54,7 +68,14 @@ describe("Event status middleware (requireEventActive)", () => {
   test("cannot verify after event ends (ended_at in past)", async () => {
     setupBase();
     const pastEnd = new Date(Date.now() - 3600000).toISOString();
-    mockSupabase.__testing.setTable("event_config", [{ id: 1, started_at: new Date(Date.now() - 7200000).toISOString(), duration_minutes: 120, ended_at: pastEnd }]);
+    mockSupabase.__testing.setTable("event_config", [
+      {
+        id: 1,
+        started_at: new Date(Date.now() - 7200000).toISOString(),
+        duration_minutes: 120,
+        ended_at: pastEnd,
+      },
+    ]);
 
     const res = await request(app)
       .post("/api/team/verify-code")
@@ -67,7 +88,9 @@ describe("Event status middleware (requireEventActive)", () => {
   test("cannot verify after duration expires (no ended_at but started_at + duration passed)", async () => {
     setupBase();
     const oldStart = new Date(Date.now() - 7200000).toISOString();
-    mockSupabase.__testing.setTable("event_config", [{ id: 1, started_at: oldStart, duration_minutes: 60, ended_at: null }]);
+    mockSupabase.__testing.setTable("event_config", [
+      { id: 1, started_at: oldStart, duration_minutes: 60, ended_at: null },
+    ]);
 
     const res = await request(app)
       .post("/api/team/verify-code")
@@ -79,7 +102,9 @@ describe("Event status middleware (requireEventActive)", () => {
 
   test("missing event config (started_at null) fails safely -> 'Event has not started'", async () => {
     setupBase();
-    mockSupabase.__testing.setTable("event_config", [{ id: 1, started_at: null, duration_minutes: 120, ended_at: null }]);
+    mockSupabase.__testing.setTable("event_config", [
+      { id: 1, started_at: null, duration_minutes: 120, ended_at: null },
+    ]);
 
     const res = await request(app)
       .post("/api/team/verify-code")
@@ -110,7 +135,12 @@ describe("Event status middleware (requireEventActive)", () => {
   });
 
   test("GET /api/event returns config when present", async () => {
-    const config = { id: 1, started_at: new Date().toISOString(), duration_minutes: 120, ended_at: null };
+    const config = {
+      id: 1,
+      started_at: new Date().toISOString(),
+      duration_minutes: 120,
+      ended_at: null,
+    };
     mockSupabase.__testing.setTable("event_config", [config]);
 
     const res = await request(app).get("/api/event");

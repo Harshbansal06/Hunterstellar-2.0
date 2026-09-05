@@ -1,0 +1,13 @@
+{
+  "semi": false,
+  "singleQuote": true,
+  "printWidth": 90,
+  "trailingComma": "all",
+  "arrowParens": "always",
+  "overrides": [
+    {
+      "files": "backend/**/*.js",
+      "options": { "semi": true, "singleQuote": false }
+    }
+  ]
+}

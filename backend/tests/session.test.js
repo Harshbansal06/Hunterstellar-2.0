@@ -4,7 +4,9 @@ const app = require("../app");
 const { signToken } = require("./helpers/tokens");
 const { invalidateTeamStateCache } = require("../utils/teamState");
 
-jest.mock("../db/supabaseClient", () => require("./helpers/mockSupabase").createMockSupabase());
+jest.mock("../db/supabaseClient", () =>
+  require("./helpers/mockSupabase").createMockSupabase(),
+);
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
 const mockSupabase = require("../db/supabaseClient");
@@ -56,7 +58,12 @@ function seed(teamRow) {
     { id: "q1", question_statement: "Q1?", question_answer: "ANSWER1", domain: "d1" },
   ]);
   mockSupabase.__testing.setTable("event_config", [
-    { id: 1, started_at: new Date(Date.now() - 60000).toISOString(), ended_at: null, duration_minutes: 180 },
+    {
+      id: 1,
+      started_at: new Date(Date.now() - 60000).toISOString(),
+      ended_at: null,
+      duration_minutes: 180,
+    },
   ]);
   mockSupabase.__testing.setTable("announcements", []);
 }

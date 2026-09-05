@@ -3,7 +3,9 @@ const bcrypt = require("bcryptjs");
 const app = require("../app");
 const { signToken } = require("./helpers/tokens");
 
-jest.mock("../db/supabaseClient", () => require("./helpers/mockSupabase").createMockSupabase());
+jest.mock("../db/supabaseClient", () =>
+  require("./helpers/mockSupabase").createMockSupabase(),
+);
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
 // These suites push hundreds of requests through the app at once and run
@@ -91,12 +93,14 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
     mockSupabase.__testing.setTable("islands", islands);
     mockSupabase.__testing.setTable("questions", questions);
     mockSupabase.__testing.setTable("announcements", []);
-    mockSupabase.__testing.setTable("event_config", [{
-      id: 1,
-      started_at: new Date(Date.now() - 1000).toISOString(),
-      duration_minutes: 120,
-      ended_at: null,
-    }]);
+    mockSupabase.__testing.setTable("event_config", [
+      {
+        id: 1,
+        started_at: new Date(Date.now() - 1000).toISOString(),
+        duration_minutes: 120,
+        ended_at: null,
+      },
+    ]);
 
     invalidateAllTeamStateCache();
     return teams;
@@ -112,7 +116,9 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
       seedTeams("event");
 
       const responses = await Promise.all(
-        Array(TEAM_COUNT).fill().map(() => request(app).get("/api/event")),
+        Array(TEAM_COUNT)
+          .fill()
+          .map(() => request(app).get("/api/event")),
       );
 
       expect(statuses(responses).filter((s) => s !== 200)).toEqual([]);
@@ -128,7 +134,9 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
       seedTeams("health");
 
       const responses = await Promise.all(
-        Array(TEAM_COUNT).fill().map(() => request(app).get("/health")),
+        Array(TEAM_COUNT)
+          .fill()
+          .map(() => request(app).get("/health")),
       );
 
       expect(statuses(responses).filter((s) => s !== 200)).toEqual([]);
@@ -171,23 +179,30 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
       mockSupabase.__testing.setTable("islands", islands);
       mockSupabase.__testing.setTable("questions", questions);
       mockSupabase.__testing.setTable("announcements", []);
-      mockSupabase.__testing.setTable("event_config", [{
-        id: 1, started_at: null, duration_minutes: 120, ended_at: null,
-      }]);
+      mockSupabase.__testing.setTable("event_config", [
+        {
+          id: 1,
+          started_at: null,
+          duration_minutes: 120,
+          ended_at: null,
+        },
+      ]);
 
       const responses = await Promise.all(
-        Array(TEAM_COUNT).fill().map((_, i) =>
-          request(app)
-            .post("/api/team/register")
-            .set("x-webhook-secret", process.env.WEBHOOK_SECRET)
-            .send({
-              team_name: "Registered " + i,
-              team_leader: "Leader " + i,
-              members: ["Leader " + i],
-              password: PASSWORD,
-              email: "reg" + i + "@test.com",
-            }),
-        ),
+        Array(TEAM_COUNT)
+          .fill()
+          .map((_, i) =>
+            request(app)
+              .post("/api/team/register")
+              .set("x-webhook-secret", process.env.WEBHOOK_SECRET)
+              .send({
+                team_name: "Registered " + i,
+                team_leader: "Leader " + i,
+                members: ["Leader " + i],
+                password: PASSWORD,
+                email: "reg" + i + "@test.com",
+              }),
+          ),
       );
 
       expect(statuses(responses).filter((s) => s !== 200)).toEqual([]);
@@ -215,11 +230,41 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
       mockSupabase.__testing.reset();
       mockSupabase.__testing.setTable("teams", []);
       mockSupabase.__testing.setTable("islands", [
-        { id: "d-1", correct_code: "C1", clue_statement: "c", is_common_room: false, order: 1 },
-        { id: "d-2", correct_code: "C2", clue_statement: "c", is_common_room: false, order: 2 },
-        { id: "d-3", correct_code: "C3", clue_statement: "c", is_common_room: false, order: 3 },
-        { id: "d-4", correct_code: "C4", clue_statement: "c", is_common_room: false, order: 4 },
-        { id: "d-5", correct_code: "C5", clue_statement: "c", is_common_room: true, order: 5 },
+        {
+          id: "d-1",
+          correct_code: "C1",
+          clue_statement: "c",
+          is_common_room: false,
+          order: 1,
+        },
+        {
+          id: "d-2",
+          correct_code: "C2",
+          clue_statement: "c",
+          is_common_room: false,
+          order: 2,
+        },
+        {
+          id: "d-3",
+          correct_code: "C3",
+          clue_statement: "c",
+          is_common_room: false,
+          order: 3,
+        },
+        {
+          id: "d-4",
+          correct_code: "C4",
+          clue_statement: "c",
+          is_common_room: false,
+          order: 4,
+        },
+        {
+          id: "d-5",
+          correct_code: "C5",
+          clue_statement: "c",
+          is_common_room: true,
+          order: 5,
+        },
       ]);
       mockSupabase.__testing.setTable("questions", [
         { id: "dq-1", question_statement: "q", question_answer: "a", domain: "d1" },
@@ -228,23 +273,30 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
         { id: "dq-4", question_statement: "q", question_answer: "a", domain: "d4" },
       ]);
       mockSupabase.__testing.setTable("announcements", []);
-      mockSupabase.__testing.setTable("event_config", [{
-        id: 1, started_at: null, duration_minutes: 120, ended_at: null,
-      }]);
+      mockSupabase.__testing.setTable("event_config", [
+        {
+          id: 1,
+          started_at: null,
+          duration_minutes: 120,
+          ended_at: null,
+        },
+      ]);
 
       const responses = await Promise.all(
-        Array(20).fill().map(() =>
-          request(app)
-            .post("/api/team/register")
-            .set("x-webhook-secret", process.env.WEBHOOK_SECRET)
-            .send({
-              team_name: "Duplicate",
-              team_leader: "L",
-              members: ["L"],
-              password: PASSWORD,
-              email: "dup@test.com",
-            }),
-        ),
+        Array(20)
+          .fill()
+          .map(() =>
+            request(app)
+              .post("/api/team/register")
+              .set("x-webhook-secret", process.env.WEBHOOK_SECRET)
+              .send({
+                team_name: "Duplicate",
+                team_leader: "L",
+                members: ["L"],
+                password: PASSWORD,
+                email: "dup@test.com",
+              }),
+          ),
       );
 
       // Every attempt is accepted; the suffixing keeps names distinct.
@@ -257,11 +309,17 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
       seedTeams("forged");
 
       const responses = await Promise.all(
-        Array(TEAM_COUNT).fill().map((_, i) =>
-          request(app)
-            .post("/api/team/register")
-            .send({ team_name: "Forged " + i, password: PASSWORD, email: "f@test.com" }),
-        ),
+        Array(TEAM_COUNT)
+          .fill()
+          .map((_, i) =>
+            request(app)
+              .post("/api/team/register")
+              .send({
+                team_name: "Forged " + i,
+                password: PASSWORD,
+                email: "f@test.com",
+              }),
+          ),
       );
 
       expect(statuses(responses).filter((s) => s !== 403)).toEqual([]);
@@ -304,11 +362,13 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
       const teams = seedTeams("badpass");
 
       const responses = await Promise.all(
-        teams.slice(0, 5).map((team) =>
-          request(app)
-            .post("/api/login")
-            .send({ team_name: team.team_name, password: "not-the-password" }),
-        ),
+        teams
+          .slice(0, 5)
+          .map((team) =>
+            request(app)
+              .post("/api/login")
+              .send({ team_name: team.team_name, password: "not-the-password" }),
+          ),
       );
 
       for (const res of responses) {
@@ -339,14 +399,18 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
         expect(res.body.clue_statement).toBe("Clue for team " + i);
         expect(res.body.team.password).toBeUndefined();
       }
-      expect(unique(responses.map(({ res }) => res.body.clue_statement))).toBe(TEAM_COUNT);
+      expect(unique(responses.map(({ res }) => res.body.clue_statement))).toBe(
+        TEAM_COUNT,
+      );
     });
 
     test("150 unauthenticated polls are all rejected", async () => {
       seedTeams("noauth");
 
       const responses = await Promise.all(
-        Array(TEAM_COUNT).fill().map(() => request(app).get("/api/team/state")),
+        Array(TEAM_COUNT)
+          .fill()
+          .map(() => request(app).get("/api/team/state")),
       );
 
       expect(statuses(responses).filter((s) => s !== 401)).toEqual([]);
@@ -428,12 +492,14 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
 
       // Spend the noisy team's entire per-user budget.
       await Promise.all(
-        Array(11).fill().map(() =>
-          request(app)
-            .post("/api/team/verify-code")
-            .set("Authorization", "Bearer " + signToken(noisy.id))
-            .send({ enteredCode: "NOPE" }),
-        ),
+        Array(11)
+          .fill()
+          .map(() =>
+            request(app)
+              .post("/api/team/verify-code")
+              .set("Authorization", "Bearer " + signToken(noisy.id))
+              .send({ enteredCode: "NOPE" }),
+          ),
       );
 
       const others = await Promise.all(
@@ -498,7 +564,9 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
         expect(team.lock_until).toBeNull();
       }
       // Teams outside the batch are untouched.
-      expect(stored.filter((t) => t.status === "locked")).toHaveLength(TEAM_COUNT - batch.length);
+      expect(stored.filter((t) => t.status === "locked")).toHaveLength(
+        TEAM_COUNT - batch.length,
+      );
     });
 
     test("admin messages land on the addressed team only", async () => {
@@ -507,8 +575,10 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
       const batch = teams.slice(0, 25);
       const responses = await Promise.all(
         batch.map((team, i) =>
-          admin(request(app).post("/api/admin/send-message"))
-            .send({ team_id: team.id, message: "Message for " + i }),
+          admin(request(app).post("/api/admin/send-message")).send({
+            team_id: team.id,
+            message: "Message for " + i,
+          }),
         ),
       );
 
@@ -527,8 +597,9 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
     test("an announcement reaches all 150 teams at once", async () => {
       const teams = seedTeams("announce");
 
-      const posted = await admin(request(app).post("/api/admin/announce"))
-        .send({ message: "All crews report in" });
+      const posted = await admin(request(app).post("/api/admin/announce")).send({
+        message: "All crews report in",
+      });
       expect(posted.status).toBe(200);
 
       const responses = await Promise.all(
@@ -556,9 +627,9 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
         ),
       );
       const withWrongSecret = await Promise.all(
-        Array(10).fill().map(() =>
-          request(app).get("/api/admin/teams").set("x-admin-secret", "wrong"),
-        ),
+        Array(10)
+          .fill()
+          .map(() => request(app).get("/api/admin/teams").set("x-admin-secret", "wrong")),
       );
 
       for (const res of withTeamToken.concat(withWrongSecret)) {
@@ -571,7 +642,9 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
       seedTeams("adminrate");
 
       const responses = await Promise.all(
-        Array(40).fill().map(() => admin(request(app).get("/api/admin/teams"))),
+        Array(40)
+          .fill()
+          .map(() => admin(request(app).get("/api/admin/teams"))),
       );
 
       const ok = responses.filter((r) => r.status === 200);
@@ -582,9 +655,14 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
 
     test("start and end gate play for all 150 teams", async () => {
       const teams = seedTeams("gate");
-      mockSupabase.__testing.setTable("event_config", [{
-        id: 1, started_at: null, duration_minutes: 120, ended_at: null,
-      }]);
+      mockSupabase.__testing.setTable("event_config", [
+        {
+          id: 1,
+          started_at: null,
+          duration_minutes: 120,
+          ended_at: null,
+        },
+      ]);
 
       const beforeStart = await Promise.all(
         teams.map((team, i) =>
@@ -689,8 +767,9 @@ describe(TEAM_COUNT + " concurrent teams across every endpoint", () => {
         const curr = ranked[i];
         expect(prev.progress).toBeGreaterThanOrEqual(curr.progress);
         if (prev.progress === curr.progress) {
-          expect(new Date(prev.last_correct_at).getTime())
-            .toBeLessThanOrEqual(new Date(curr.last_correct_at).getTime());
+          expect(new Date(prev.last_correct_at).getTime()).toBeLessThanOrEqual(
+            new Date(curr.last_correct_at).getTime(),
+          );
         }
       }
     });

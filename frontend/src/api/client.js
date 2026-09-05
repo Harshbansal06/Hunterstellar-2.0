@@ -26,7 +26,7 @@ api.interceptors.request.use((config) => {
     const token = localStorage.getItem('odyssey_token')
     if (token) config.headers.Authorization = `Bearer ${token}`
   } catch {
-    /* storage unavailable — send the request unauthenticated and let the
+    /* storage unavailable, so send the request unauthenticated and let the
        server decide */
   }
   return config
@@ -41,7 +41,12 @@ api.interceptors.response.use(
     // ("not started" / "has ended") is a normal game state, not an auth
     // failure -- logging someone out mid-hunt for standing at a station too
     // early would be indefensible.
-    if (status === 401) {
+    // A 401 from /login itself is a wrong password, not a dead session. There
+    // is nothing to log out of, and writing "expired" here made the login
+    // screen tell a crew their session expired when they had only mistyped.
+    const isLoginRequest = /(^|\/)login$/.test(err.config?.url || '')
+
+    if (status === 401 && !isLoginRequest) {
       try {
         localStorage.removeItem('odyssey_token')
         localStorage.removeItem('odyssey_user')

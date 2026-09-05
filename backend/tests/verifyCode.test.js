@@ -2,7 +2,9 @@ const request = require("supertest");
 const app = require("../app");
 const { signToken } = require("./helpers/tokens");
 
-jest.mock("../db/supabaseClient", () => require("./helpers/mockSupabase").createMockSupabase());
+jest.mock("../db/supabaseClient", () =>
+  require("./helpers/mockSupabase").createMockSupabase(),
+);
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
 const mockSupabase = require("../db/supabaseClient");
@@ -28,8 +30,20 @@ describe("Verify code behavior", () => {
     notice: null,
     last_correct_at: null,
   };
-  const island = { id: "i1", correct_code: "CODE1", clue_statement: "Clue 1", is_common_room: false, clue_images: ["https://cdn.test/i1.jpg"], is_terminal: false };
-  const question = { id: "q1", question_statement: "Q1", question_answer: "ANS1", domain: "test" };
+  const island = {
+    id: "i1",
+    correct_code: "CODE1",
+    clue_statement: "Clue 1",
+    is_common_room: false,
+    clue_images: ["https://cdn.test/i1.jpg"],
+    is_terminal: false,
+  };
+  const question = {
+    id: "q1",
+    question_statement: "Q1",
+    question_answer: "ANS1",
+    domain: "test",
+  };
 
   function setup(config = {}) {
     const team = { ...baseTeam, ...config };
@@ -37,7 +51,14 @@ describe("Verify code behavior", () => {
     mockSupabase.__testing.setTable("islands", [island]);
     mockSupabase.__testing.setTable("questions", [question]);
     mockSupabase.__testing.setTable("announcements", []);
-    mockSupabase.__testing.setTable("event_config", [{ id: 1, started_at: new Date(Date.now() - 1000).toISOString(), duration_minutes: 120, ended_at: null }]);
+    mockSupabase.__testing.setTable("event_config", [
+      {
+        id: 1,
+        started_at: new Date(Date.now() - 1000).toISOString(),
+        duration_minutes: 120,
+        ended_at: null,
+      },
+    ]);
     return team;
   }
 
@@ -59,14 +80,18 @@ describe("Verify code behavior", () => {
     expect(lockUntil).toBeGreaterThanOrEqual(before + 6 * 60 * 1000);
     expect(lockUntil).toBeLessThanOrEqual(after + 8 * 60 * 1000);
 
-    const team = mockSupabase.__testing.getTable("teams").find(t => t.id === "team-a");
+    const team = mockSupabase.__testing.getTable("teams").find((t) => t.id === "team-a");
     expect(team.status).toBe("locked");
     expect(team.wrong_attempts).toBe(1);
     expect(new Date(team.lock_until).getTime()).toBe(lockUntil);
   });
 
   test("lock expires correctly (auto-unlock on state fetch after lock_until passes)", async () => {
-    setup({ status: "locked", lock_until: new Date(Date.now() - 1000).toISOString(), wrong_attempts: 1 });
+    setup({
+      status: "locked",
+      lock_until: new Date(Date.now() - 1000).toISOString(),
+      wrong_attempts: 1,
+    });
     const res = await request(app)
       .get("/api/team/state")
       .set("Authorization", `Bearer ${signToken("team-a")}`);
@@ -74,7 +99,7 @@ describe("Verify code behavior", () => {
     expect(res.body.stage).not.toBe("locked");
     expect(res.body.stage).toBe("awaiting_code");
 
-    const team = mockSupabase.__testing.getTable("teams").find(t => t.id === "team-a");
+    const team = mockSupabase.__testing.getTable("teams").find((t) => t.id === "team-a");
     expect(team.status).toBe("active");
     expect(team.lock_until).toBeNull();
   });
@@ -91,13 +116,18 @@ describe("Verify code behavior", () => {
     expect(res.body.state.team.progress).toBe(0);
     expect(res.body.state.team.status).toBe("active");
 
-    const team = mockSupabase.__testing.getTable("teams").find(t => t.id === "team-a");
+    const team = mockSupabase.__testing.getTable("teams").find((t) => t.id === "team-a");
     expect(team.stage).toBe("awaiting_puzzle");
     expect(team.progress).toBe(0);
   });
 
   test("correct code on final stop (question_id null) finishes team", async () => {
-    const finalIsland = { id: "i-final", correct_code: "FINAL", clue_statement: "Final", is_common_room: true };
+    const finalIsland = {
+      id: "i-final",
+      correct_code: "FINAL",
+      clue_statement: "Final",
+      is_common_room: true,
+    };
     setup({
       // A real route is five stops; the common room at index 4 ends the hunt.
       route: [
@@ -262,5 +292,4 @@ describe("Verify code behavior", () => {
     expect(row.status).toBe("locked");
     expect(row.stage).toBe("awaiting_code");
   });
-
 });

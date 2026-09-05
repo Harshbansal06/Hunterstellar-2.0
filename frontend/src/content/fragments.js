@@ -49,7 +49,7 @@ export const FRAGMENTS = {
       {
         key: 'ERROR',
         value:
-          "Assembling the theoretical ULTIMATE POWER at Earth yields 100% probability of False Vacuum Collapse.",
+          'Assembling the theoretical ULTIMATE POWER at Earth yields 100% probability of False Vacuum Collapse.',
       },
       {
         key: 'CAUSE',

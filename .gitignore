@@ -1,40 +1,36 @@
 # Dependencies
 node_modules/
 
-# Environment files
+# Environment files. Everything real is ignored.
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+.env.*
+# Committed on purpose:
+#   *.example       the documented template
+#   .env.production build-time, non-secret API URL that Vite inlines. It is
+#                   visible in the shipped bundle anyway, and leaving it to a
+#                   host dashboard is what broke a previous deploy.
+!.env.example
+!.env.production
 
 # Build outputs
 dist/
 build/
 .next/
 out/
+.vercel/
 
-# IDE/Editor
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Testing
+# Test + tooling output
 coverage/
 .nyc_output/
-
-# Misc
 *.log
 *.tsbuildinfo
+
+# Editor and OS
+.idea/
+.vscode/
+.opencode/
+opencode.json
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

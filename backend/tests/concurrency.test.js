@@ -2,8 +2,9 @@ const request = require("supertest");
 const app = require("../app");
 const { signToken } = require("./helpers/tokens");
 
-
-jest.mock("../db/supabaseClient", () => require("./helpers/mockSupabase").createMockSupabase());
+jest.mock("../db/supabaseClient", () =>
+  require("./helpers/mockSupabase").createMockSupabase(),
+);
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
 const mockSupabase = require("../db/supabaseClient");
@@ -19,7 +20,10 @@ describe("Concurrent requests cannot corrupt progression (atomic compare-and-set
     team_leader: "Alice",
     members: ["Alice"],
     password: "$2a$10$hashed",
-    route: [{ island_id: "i1", question_id: "q1" }, { island_id: "i2", question_id: "q2" }],
+    route: [
+      { island_id: "i1", question_id: "q1" },
+      { island_id: "i2", question_id: "q2" },
+    ],
     email: "a@test.com",
     progress: 0,
     stage: "awaiting_puzzle",
@@ -29,10 +33,30 @@ describe("Concurrent requests cannot corrupt progression (atomic compare-and-set
     notice: null,
     last_correct_at: null,
   };
-  const island1 = { id: "i1", correct_code: "CODE1", clue_statement: "Clue 1", is_common_room: false };
-  const island2 = { id: "i2", correct_code: "CODE2", clue_statement: "Clue 2", is_common_room: false };
-  const question1 = { id: "q1", question_statement: "Q1", question_answer: "ANS1", domain: "test" };
-  const question2 = { id: "q2", question_statement: "Q2", question_answer: "ANS2", domain: "test" };
+  const island1 = {
+    id: "i1",
+    correct_code: "CODE1",
+    clue_statement: "Clue 1",
+    is_common_room: false,
+  };
+  const island2 = {
+    id: "i2",
+    correct_code: "CODE2",
+    clue_statement: "Clue 2",
+    is_common_room: false,
+  };
+  const question1 = {
+    id: "q1",
+    question_statement: "Q1",
+    question_answer: "ANS1",
+    domain: "test",
+  };
+  const question2 = {
+    id: "q2",
+    question_statement: "Q2",
+    question_answer: "ANS2",
+    domain: "test",
+  };
 
   function setup(config = {}) {
     const team = { ...baseTeam, ...config };
@@ -40,7 +64,14 @@ describe("Concurrent requests cannot corrupt progression (atomic compare-and-set
     mockSupabase.__testing.setTable("islands", [island1, island2]);
     mockSupabase.__testing.setTable("questions", [question1, question2]);
     mockSupabase.__testing.setTable("announcements", []);
-    mockSupabase.__testing.setTable("event_config", [{ id: 1, started_at: new Date(Date.now() - 1000).toISOString(), duration_minutes: 120, ended_at: null }]);
+    mockSupabase.__testing.setTable("event_config", [
+      {
+        id: 1,
+        started_at: new Date(Date.now() - 1000).toISOString(),
+        duration_minutes: 120,
+        ended_at: null,
+      },
+    ]);
     // A round trip on `teams` is what creates the race: every caller reads the
     // row before any write lands, so the conditional update has to reject the
     // losers. Without it these requests serialise and nothing is proven.
@@ -56,24 +87,30 @@ describe("Concurrent requests cannot corrupt progression (atomic compare-and-set
     const token = signToken(teamId);
     const concurrency = 10;
 
-    const promises = Array(concurrency).fill().map(() =>
-      request(app)
-        .post("/api/team/verify-answer")
-        .set("Authorization", `Bearer ${token}`)
-        .send({ enteredAns: "ANS1" })
-    );
+    const promises = Array(concurrency)
+      .fill()
+      .map(() =>
+        request(app)
+          .post("/api/team/verify-answer")
+          .set("Authorization", `Bearer ${token}`)
+          .send({ enteredAns: "ANS1" }),
+      );
 
     const results = await Promise.all(promises);
 
-    const successes = results.filter(r => r.body.success === true);
-    const wrongStage = results.filter(r => r.body.success === false && r.body.reason === "wrong_stage");
-    const errors = results.filter(r => r.status !== 200);
+    const successes = results.filter((r) => r.body.success === true);
+    const wrongStage = results.filter(
+      (r) => r.body.success === false && r.body.reason === "wrong_stage",
+    );
+    const errors = results.filter((r) => r.status !== 200);
 
     expect(successes.length).toBe(1);
     expect(wrongStage.length).toBe(concurrency - 1);
     expect(errors.length).toBe(0);
 
-    const finalTeam = mockSupabase.__testing.getTable("teams").find(t => t.id === teamId);
+    const finalTeam = mockSupabase.__testing
+      .getTable("teams")
+      .find((t) => t.id === teamId);
     expect(finalTeam.progress).toBe(1);
     expect(finalTeam.stage).toBe("awaiting_code");
   });
@@ -91,36 +128,54 @@ describe("Concurrent requests cannot corrupt progression (atomic compare-and-set
     mockSupabase.__testing.setTable("islands", [island1]);
     mockSupabase.__testing.setTable("questions", [question1]);
     mockSupabase.__testing.setTable("announcements", []);
-    mockSupabase.__testing.setTable("event_config", [{ id: 1, started_at: new Date(Date.now() - 1000).toISOString(), duration_minutes: 120, ended_at: null }]);
+    mockSupabase.__testing.setTable("event_config", [
+      {
+        id: 1,
+        started_at: new Date(Date.now() - 1000).toISOString(),
+        duration_minutes: 120,
+        ended_at: null,
+      },
+    ]);
     mockSupabase.__testing.setLatency("teams", 5);
 
     const token = signToken(teamId);
     const concurrency = 10;
 
-    const promises = Array(concurrency).fill().map(() =>
-      request(app)
-        .post("/api/team/verify-code")
-        .set("Authorization", `Bearer ${token}`)
-        .send({ enteredCode: "CODE1" })
-    );
+    const promises = Array(concurrency)
+      .fill()
+      .map(() =>
+        request(app)
+          .post("/api/team/verify-code")
+          .set("Authorization", `Bearer ${token}`)
+          .send({ enteredCode: "CODE1" }),
+      );
 
     const results = await Promise.all(promises);
 
-    const successes = results.filter(r => r.body.success === true);
-    const wrongStage = results.filter(r => r.body.success === false && r.body.reason === "wrong_stage");
-    const errors = results.filter(r => r.status !== 200);
+    const successes = results.filter((r) => r.body.success === true);
+    const wrongStage = results.filter(
+      (r) => r.body.success === false && r.body.reason === "wrong_stage",
+    );
+    const errors = results.filter((r) => r.status !== 200);
 
     expect(successes.length).toBe(1);
     expect(wrongStage.length).toBe(concurrency - 1);
     expect(errors.length).toBe(0);
 
-    const finalTeam = mockSupabase.__testing.getTable("teams").find(t => t.id === teamId);
+    const finalTeam = mockSupabase.__testing
+      .getTable("teams")
+      .find((t) => t.id === teamId);
     expect(finalTeam.stage).toBe("awaiting_puzzle");
     expect(finalTeam.progress).toBe(0);
   });
 
   test("concurrent verify-code calls on final stop finish team exactly once", async () => {
-    const finalIsland = { id: "i-final", correct_code: "FINAL", clue_statement: "Final", is_common_room: true };
+    const finalIsland = {
+      id: "i-final",
+      correct_code: "FINAL",
+      clue_statement: "Final",
+      is_common_room: true,
+    };
     const teamId = "conc-code-final";
     const finalTeam = {
       ...baseTeam,
@@ -140,30 +195,43 @@ describe("Concurrent requests cannot corrupt progression (atomic compare-and-set
     mockSupabase.__testing.setTable("islands", [finalIsland]);
     mockSupabase.__testing.setTable("questions", []);
     mockSupabase.__testing.setTable("announcements", []);
-    mockSupabase.__testing.setTable("event_config", [{ id: 1, started_at: new Date(Date.now() - 1000).toISOString(), duration_minutes: 120, ended_at: null }]);
+    mockSupabase.__testing.setTable("event_config", [
+      {
+        id: 1,
+        started_at: new Date(Date.now() - 1000).toISOString(),
+        duration_minutes: 120,
+        ended_at: null,
+      },
+    ]);
     mockSupabase.__testing.setLatency("teams", 5);
 
     const token = signToken(teamId);
     const concurrency = 10;
 
-    const promises = Array(concurrency).fill().map(() =>
-      request(app)
-        .post("/api/team/verify-code")
-        .set("Authorization", `Bearer ${token}`)
-        .send({ enteredCode: "FINAL" })
-    );
+    const promises = Array(concurrency)
+      .fill()
+      .map(() =>
+        request(app)
+          .post("/api/team/verify-code")
+          .set("Authorization", `Bearer ${token}`)
+          .send({ enteredCode: "FINAL" }),
+      );
 
     const results = await Promise.all(promises);
 
-    const successes = results.filter(r => r.body.success === true);
-    const wrongStage = results.filter(r => r.body.success === false && r.body.reason === "wrong_stage");
-    const errors = results.filter(r => r.status !== 200);
+    const successes = results.filter((r) => r.body.success === true);
+    const wrongStage = results.filter(
+      (r) => r.body.success === false && r.body.reason === "wrong_stage",
+    );
+    const errors = results.filter((r) => r.status !== 200);
 
     expect(successes.length).toBe(1);
     expect(wrongStage.length).toBe(concurrency - 1);
     expect(errors.length).toBe(0);
 
-    const finalTeamResult = mockSupabase.__testing.getTable("teams").find(t => t.id === teamId);
+    const finalTeamResult = mockSupabase.__testing
+      .getTable("teams")
+      .find((t) => t.id === teamId);
     expect(finalTeamResult.progress).toBe(5);
     expect(finalTeamResult.status).toBe("finished");
     // `stage` is not a terminal column -- the row keeps awaiting_code and the
@@ -184,7 +252,14 @@ describe("Concurrent requests cannot corrupt progression (atomic compare-and-set
     mockSupabase.__testing.setTable("islands", [island1]);
     mockSupabase.__testing.setTable("questions", [question1]);
     mockSupabase.__testing.setTable("announcements", []);
-    mockSupabase.__testing.setTable("event_config", [{ id: 1, started_at: new Date(Date.now() - 1000).toISOString(), duration_minutes: 120, ended_at: null }]);
+    mockSupabase.__testing.setTable("event_config", [
+      {
+        id: 1,
+        started_at: new Date(Date.now() - 1000).toISOString(),
+        duration_minutes: 120,
+        ended_at: null,
+      },
+    ]);
     mockSupabase.__testing.setLatency("teams", 5);
 
     const token = signToken(teamId);
@@ -201,22 +276,28 @@ describe("Concurrent requests cannot corrupt progression (atomic compare-and-set
 
     // The verify-code above already spent one of this team's 10 attempts.
     const answerCount = 9;
-    const answerPromises = Array(answerCount).fill().map(() =>
-      request(app)
-        .post("/api/team/verify-answer")
-        .set("Authorization", `Bearer ${token}`)
-        .send({ enteredAns: "ANS1" })
-    );
+    const answerPromises = Array(answerCount)
+      .fill()
+      .map(() =>
+        request(app)
+          .post("/api/team/verify-answer")
+          .set("Authorization", `Bearer ${token}`)
+          .send({ enteredAns: "ANS1" }),
+      );
 
     const answerResults = await Promise.all(answerPromises);
-    const answerSuccesses = answerResults.filter(r => r.body.success === true);
-    const answerWrongStage = answerResults.filter(r => r.body.success === false && r.body.reason === "wrong_stage");
+    const answerSuccesses = answerResults.filter((r) => r.body.success === true);
+    const answerWrongStage = answerResults.filter(
+      (r) => r.body.success === false && r.body.reason === "wrong_stage",
+    );
 
-    expect(answerResults.filter(r => r.status !== 200)).toEqual([]);
+    expect(answerResults.filter((r) => r.status !== 200)).toEqual([]);
     expect(answerSuccesses.length).toBe(1);
     expect(answerWrongStage.length).toBe(answerCount - 1);
 
-    const finalTeam = mockSupabase.__testing.getTable("teams").find(t => t.id === teamId);
+    const finalTeam = mockSupabase.__testing
+      .getTable("teams")
+      .find((t) => t.id === teamId);
     expect(finalTeam.progress).toBe(1);
     expect(finalTeam.stage).toBe("awaiting_code");
   });

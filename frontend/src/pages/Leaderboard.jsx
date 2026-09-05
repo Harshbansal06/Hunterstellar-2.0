@@ -1,8 +1,25 @@
-import { useState, useEffect } from 'react'
-import { Trophy, Users, RefreshCw } from 'lucide-react'
-import supabase from '../supabaseClient'
-import { LeaderboardSkeleton } from '../components/Skeleton'
-import { Layout } from '../components/Layout'
+import { useCallback, useEffect, useState } from 'react'
+import { RefreshCw, Trophy, Users } from 'lucide-react'
+import supabase from '../api/supabase'
+import { useAuth } from '../context/AuthContext'
+import { LeaderboardSkeleton } from '../components/ui/Skeleton'
+import { Layout } from '../components/shell/Layout'
+
+/**
+ * Standings.
+ *
+ * Row treatment follows docs/design/leaderboard-comp.png: first place is a
+ * solid accent slab, second is outlined, third is inverted, and everything
+ * below is a plain surface row. That is a real hierarchy rather than one card
+ * style stamped eleven times, and it means the top of the board reads at a
+ * glance from arm's length.
+ *
+ * The per-row 5px progress bar is gone. The row already states "3/5" and
+ * "3 fragments secured", so the bar was a third channel for a fact told twice.
+ *
+ * The crew's own row is marked wherever it lands, because finding yourself in a
+ * list of 150 is the actual job on this screen.
+ */
 
 function relativeTime(ts) {
   if (!ts) return ''
@@ -18,130 +35,252 @@ function relativeTime(ts) {
 function statusLabel(status) {
   if (!status) return null
   const s = String(status).toLowerCase()
-  if (s === 'finished' || s === 'complete' || s === 'done') return { text: 'Finished', tone: 'green' }
-  if (s === 'locked' || s === 'cooldown') return { text: 'On Cooldown', tone: 'amber' }
-  if (s === 'awaiting_puzzle' || s === 'awaiting_code') return { text: 'Active', tone: 'teal' }
-  return { text: s, tone: 'muted' }
+  if (s === 'finished' || s === 'complete' || s === 'done') return 'Finished'
+  if (s === 'locked' || s === 'cooldown') return 'On cooldown'
+  if (s === 'active' || s === 'awaiting_puzzle' || s === 'awaiting_code') return 'Active'
+  return s
 }
 
-const TONE_CLASS = {
-  green: 'bg-green/15 text-green',
-  amber: 'bg-amber/15 text-amber',
-  teal: 'bg-teal/15 text-teal',
-  muted: 'bg-surface-alt text-text-muted',
+const BASE_COLUMNS = 'team_name, progress, status, last_correct_at'
+
+/**
+ * `in_null_void` only exists once migration 002 has been applied. Selecting a
+ * column the view does not have is a hard error in Postgres, so ask for it
+ * first and fall back to the original column list. Otherwise deploying the
+ * frontend ahead of the migration takes the whole leaderboard down.
+ */
+async function fetchRows() {
+  const withVoid = await supabase
+    .from('leaderboard')
+    .select(`${BASE_COLUMNS}, in_null_void`)
+  if (!withVoid.error) return withVoid.data || []
+
+  const legacy = await supabase.from('leaderboard').select(BASE_COLUMNS)
+  if (legacy.error) throw legacy.error
+  return legacy.data || []
 }
 
 export default function Leaderboard() {
+  const { user } = useAuth()
   const [teams, setTeams] = useState([])
-  const [loading, setLoading] = useState(true)
+  // Initialised from whether a client exists at all. Setting it false inside
+  // the effect for the unconfigured case was a synchronous effect setState.
+  const [loading, setLoading] = useState(() => Boolean(supabase))
   const [error, setError] = useState('')
+  const [updatedAt, setUpdatedAt] = useState(null)
 
-  const BASE_COLUMNS = 'team_name, progress, status, last_correct_at'
-
-  /**
-   * `in_null_void` only exists once migration 002 has been applied. Selecting a
-   * column the view doesn't have is a hard error in Postgres, so ask for it
-   * first and fall back to the original column list -- otherwise deploying the
-   * frontend ahead of the migration takes the whole leaderboard down.
-   */
-  async function fetchRows() {
-    const withVoid = await supabase
-      .from('leaderboard')
-      .select(`${BASE_COLUMNS}, in_null_void`)
-    if (!withVoid.error) return withVoid.data || []
-
-    const legacy = await supabase.from('leaderboard').select(BASE_COLUMNS)
-    if (legacy.error) throw legacy.error
-    return legacy.data || []
-  }
-
-  async function load({ cancelled } = {}) {
+  const load = useCallback(async (cancelled) => {
     try {
       const rows = await fetchRows()
       if (cancelled?.()) return
       setTeams(rows)
       setError('')
+      setUpdatedAt(Date.now())
     } catch {
-      if (!cancelled?.()) setError('Could not load leaderboard.')
+      if (!cancelled?.()) setError('Could not load the standings.')
     } finally {
       if (!cancelled?.()) setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    // Handled by the derived `configured` flag below, not by setting state here.
     if (!supabase) return undefined
     let done = false
     const cancelled = () => done
-    // Fetch-on-mount: load() only touches state after awaiting the query.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load({ cancelled })
-    const interval = setInterval(() => load({ cancelled }), 10000)
+
+    // `load` awaits the query before it touches state, but the compiler cannot
+    // see through the async boundary and reads the call as a synchronous
+    // setState in the effect body. Deferring by a macrotask makes that
+    // provable rather than suppressing the rule, and costs nothing on a path
+    // that is about to make a network round trip anyway.
+    const kick = setTimeout(() => load(cancelled), 0)
+    const interval = setInterval(() => load(cancelled), 10000)
+
     return () => {
       done = true
+      clearTimeout(kick)
       clearInterval(interval)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [load])
 
   const configured = Boolean(supabase)
-  const displayError = configured ? error : 'Live data not configured.'
+  const displayError = configured ? error : 'Live standings are not configured.'
 
   const sorted = [...teams].sort((a, b) => {
-    if (b.progress !== a.progress) return b.progress - a.progress
-    const t = (new Date(a.last_correct_at || 0).getTime() - new Date(b.last_correct_at || 0).getTime())
-    if (t !== 0) return t
-    return String(a.team_name).localeCompare(String(b.team_name))
+    if ((b.progress ?? 0) !== (a.progress ?? 0))
+      return (b.progress ?? 0) - (a.progress ?? 0)
+    if (a.last_correct_at && b.last_correct_at)
+      return new Date(a.last_correct_at) - new Date(b.last_correct_at)
+    if (a.last_correct_at) return -1
+    if (b.last_correct_at) return 1
+    return 0
   })
 
-  const updatedAt = sorted.length > 0 ? sorted[0].last_correct_at : null
-
-  return (
-    <Layout title="Leaderboard">
-      <div className="flex-1 flex flex-col px-6 pt-6 pb-8 w-full gap-5">
-        <div className="w-full text-center">
-          <h1 className="font-grotesk font-bold text-[34px] leading-none text-text-primary">Leaderboard</h1>
-          <p className="text-text-muted text-[14px] mt-2 leading-relaxed max-w-[280px] mx-auto">Crews ranked by shards recovered. Vilgax is counting too.</p>
-          {updatedAt && <p className="text-[11px] text-text-muted/60 mt-1.5 uppercase tracking-widest">Updated {relativeTime(updatedAt)}</p>}
-        </div>
-
-        {configured && loading && sorted.length === 0 ? <LeaderboardSkeleton /> : displayError && sorted.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <p className="text-sm text-text-muted">{displayError}</p>
-            <button onClick={load} className="flex items-center gap-2 px-4 h-10 rounded-md bg-surface border border-surface-alt text-text-secondary text-sm"> <RefreshCw className="w-4 h-4" /> Retry </button>
-          </div>
-        ) : sorted.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <Users className="w-10 h-10 text-text-muted" strokeWidth={1.4} />
-            <p className="text-text-primary text-base font-medium">No teams registered yet.</p>
-            <p className="text-text-muted text-sm max-w-[240px]">Be the first to solve a station puzzle and claim the top of the route.</p>
-          </div>
-        ) : (
-          <div className="w-full flex flex-col gap-2.5">
-            {sorted.map((team, i) => {
-              const status = statusLabel(team.status)
-              // Falls back to progress when the view predates migration 002.
-              const inVoid = team.in_null_void ?? ((team.progress ?? 0) >= 5)
-              const pct = Math.min(100, (team.progress || 0) * 20)
-              return (
-                <div key={team.team_name} className={`flex items-center gap-3 px-4 py-3 rounded-md card-noise border ${inVoid ? 'border-void-gold/40' : 'border-surface-alt/40'}`}>
-                  <div className="flex items-center justify-center w-9 h-9 rounded-full shrink-0 bg-surface-alt">
-                    {i === 0 ? <Trophy className="w-[18px] h-[18px] text-teal" strokeWidth={1.8} /> : <span className={`font-bebas text-xl leading-none ${i < 5 ? 'text-teal' : 'text-text-muted'}`}>{i + 1}</span>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-display text-[16px] text-text-primary truncate">{team.team_name}</p>
-                    <p className="text-[11px] text-text-muted/70 truncate mt-0.5">{inVoid ? 'In the Null Void' : `${team.progress ?? 0} fragment${team.progress === 1 ? '' : 's'} secured`}{team.last_correct_at ? ` · ${relativeTime(team.last_correct_at)}` : ''}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0 w-24">
-                    <div className="w-full h-[5px] rounded-full overflow-hidden bg-surface-alt"><div className="h-full rounded-full bg-teal" style={{ width: `${pct}%` }} /></div>
-                    <div className="flex items-center gap-2">{inVoid ? <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-void-gold/50 bg-void-gold/15 text-void-gold whitespace-nowrap">Null Void</span> : status && <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded ${TONE_CLASS[status.tone]}`}>{status.text}</span>}<span className="font-bebas text-lg leading-none text-text-secondary">{team.progress ?? 0}/5</span></div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+  let body
+  if (configured && loading && sorted.length === 0) {
+    body = <LeaderboardSkeleton />
+  } else if (displayError && sorted.length === 0) {
+    body = (
+      <div className="flex flex-col items-center gap-3 py-16 text-center">
+        <p className="text-[14px] text-text-muted">{displayError}</p>
+        {configured && (
+          <button
+            onClick={() => load()}
+            className="flex items-center gap-2 px-4 min-h-11 rounded-md bg-surface border
+              border-surface-alt text-text-secondary text-[14px] motion-press cursor-pointer
+              focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
+          >
+            <RefreshCw className="w-4 h-4" aria-hidden="true" /> Try again
+          </button>
         )}
       </div>
+    )
+  } else if (sorted.length === 0) {
+    // Honest zero. "No teams registered yet" is a real state, and it is not
+    // the same thing as a query that failed.
+    body = (
+      <div className="flex flex-col items-center gap-3 py-16 text-center">
+        <Users
+          className="w-10 h-10 text-text-muted"
+          strokeWidth={1.4}
+          aria-hidden="true"
+        />
+        <p className="text-text-primary text-[16px] font-medium">
+          No crews registered yet.
+        </p>
+        <p className="text-text-muted text-[14px] max-w-[240px]">
+          Be the first to solve a station challenge and claim the top of the route.
+        </p>
+      </div>
+    )
+  } else {
+    body = (
+      <ol className="w-full flex flex-col gap-2.5">
+        {sorted.map((team, i) => (
+          <Row
+            key={team.team_name}
+            team={team}
+            rank={i + 1}
+            isSelf={Boolean(user?.team_name) && team.team_name === user.team_name}
+          />
+        ))}
+      </ol>
+    )
+  }
+
+  return (
+    <Layout title="Standings">
+      <div className="flex-1 flex flex-col px-5 pt-6 pb-8 w-full gap-5">
+        <header className="w-full flex flex-col gap-2">
+          <h1 className="display-grunge text-[40px] leading-none text-text-primary">
+            Leaderboard
+          </h1>
+          <p className="text-text-muted text-[14px] leading-relaxed">
+            Crews ranked by fragments recovered, ties broken by who got there first.
+          </p>
+          {updatedAt && (
+            <p className="font-mono text-[12px] text-text-muted/70 uppercase tracking-[0.14em]">
+              Updated {relativeTime(updatedAt)}
+            </p>
+          )}
+        </header>
+
+        {body}
+      </div>
     </Layout>
+  )
+}
+
+/**
+ * Four treatments, spent by rank. Border, fill and weight each say "this one
+ * matters more", so they are used where that is true instead of on every row.
+ */
+function Row({ team, rank, isSelf }) {
+  const progress = team.progress ?? 0
+  const inVoid = team.in_null_void ?? progress >= 5
+  const status = statusLabel(team.status)
+
+  const first = rank === 1
+  const second = rank === 2
+  const third = rank === 3
+
+  const shell = first
+    ? 'bg-accent border-accent'
+    : second
+      ? 'bg-transparent border-text-secondary'
+      : third
+        ? 'bg-text-primary border-text-primary'
+        : 'card-noise border-surface-alt/50'
+
+  const nameTone = first || third ? 'text-text-inverse' : 'text-text-primary'
+  const metaTone = first || third ? 'text-text-inverse/70' : 'text-text-muted'
+  const rankTone =
+    first || third
+      ? 'text-text-inverse'
+      : second
+        ? 'text-text-secondary'
+        : 'text-text-muted'
+
+  return (
+    <li
+      className={`relative flex items-center gap-3 px-4 py-3.5 border ${shell} ${
+        isSelf ? 'ring-1 ring-teal ring-offset-2 ring-offset-bg' : ''
+      }`}
+    >
+      <span
+        className={`font-bebas text-[26px] leading-none tabular-nums w-8 shrink-0 ${rankTone}`}
+      >
+        {rank}
+      </span>
+
+      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <p className={`font-display text-[16px] truncate ${nameTone}`}>
+            {team.team_name}
+          </p>
+          {first && (
+            <Trophy
+              className="w-4 h-4 shrink-0 text-text-inverse"
+              strokeWidth={2}
+              aria-hidden="true"
+            />
+          )}
+          {isSelf && (
+            <span
+              className={`shrink-0 font-mono text-[12px] tracking-[0.14em] uppercase px-1.5
+                border border-teal text-teal ${first || third ? 'bg-bg' : ''}`}
+            >
+              You
+            </span>
+          )}
+        </div>
+        <p className={`text-[12px] truncate ${metaTone}`}>
+          {inVoid
+            ? 'In the Null Void'
+            : `${progress} fragment${progress === 1 ? '' : 's'} secured`}
+          {team.last_correct_at ? ` · ${relativeTime(team.last_correct_at)}` : ''}
+        </p>
+      </div>
+
+      <div className="shrink-0 flex flex-col items-end gap-1">
+        <span className={`font-bebas text-[20px] leading-none tabular-nums ${rankTone}`}>
+          {progress}/5
+        </span>
+        {(inVoid || status) && (
+          <span
+            className={`font-mono text-[12px] tracking-[0.1em] uppercase whitespace-nowrap px-1.5
+              border ${
+                inVoid
+                  ? 'border-void-gold/60 text-void-gold bg-bg'
+                  : first || third
+                    ? 'border-text-inverse/40 text-text-inverse/80'
+                    : 'border-border text-text-muted'
+              }`}
+          >
+            {inVoid ? 'Null Void' : status}
+          </span>
+        )}
+      </div>
+    </li>
   )
 }

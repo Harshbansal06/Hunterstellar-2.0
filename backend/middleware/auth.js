@@ -24,7 +24,9 @@ function requireAdmin(req, res, next) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
-  console.log(`ADMIN ACTION: ${req.method} ${req.path} from ${req.ip} at ${new Date().toISOString()}`);
+  console.log(
+    `ADMIN ACTION: ${req.method} ${req.path} from ${req.ip} at ${new Date().toISOString()}`,
+  );
   next();
 }
 

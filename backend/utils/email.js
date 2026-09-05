@@ -1,10 +1,8 @@
 const { Resend } = require("resend");
 
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-const WELCOME_SUBJECT = "Hunterstellar 2.0 — your shuttlecraft credentials";
+const WELCOME_SUBJECT = "Hunterstellar 2.0: your shuttlecraft credentials";
 
 /**
  * Field names here are copied from the registration form, and the login
@@ -19,13 +17,15 @@ function renderWelcomeTemplate({ team_name, password, email }) {
     <p>Shuttlecraft Callsign: <strong>${team_name}</strong></p>
     <p>Rust Bucket Access Code: <strong>${password}</strong></p>
     <p>Registered email: ${email}</p>
-    <p>Keep this email — you will need both to log in, and only one device can be signed in at a time.</p>
+    <p>Keep this email, you will need both to log in, and only one device can be signed in at a time.</p>
   `;
 }
 
 async function sendWelcomeEmail({ to, team_name, password, email }) {
   if (!resend) {
-    console.warn("Resend not configured (RESEND_API_KEY missing) — skipping welcome email.");
+    console.warn(
+      "Resend not configured (RESEND_API_KEY missing), skipping welcome email.",
+    );
     return;
   }
 

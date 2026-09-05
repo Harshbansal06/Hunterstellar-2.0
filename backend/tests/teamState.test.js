@@ -1,6 +1,8 @@
 const { signToken } = require("./helpers/tokens");
 
-jest.mock("../db/supabaseClient", () => require("./helpers/mockSupabase").createMockSupabase());
+jest.mock("../db/supabaseClient", () =>
+  require("./helpers/mockSupabase").createMockSupabase(),
+);
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
 const mockSupabase = require("../db/supabaseClient");
@@ -38,32 +40,36 @@ describe("team state contract (RPC path vs JS fallback)", () => {
 
   function seed(overrides = {}) {
     mockSupabase.__testing.reset();
-    mockSupabase.__testing.setTable("teams", [{
-      id: "team-a",
-      team_name: "Team Alpha",
-      team_leader: "Alice",
-      members: ["Alice"],
-      password: "$2a$10$hashed",
-      route: [{ island_id: "i1", question_id: "q1" }],
-      email: "a@test.com",
-      progress: 0,
-      stage: "awaiting_code",
-      status: "active",
-      wrong_attempts: 0,
-      lock_until: null,
-      notice: null,
-      last_correct_at: null,
-      ...overrides,
-    }]);
+    mockSupabase.__testing.setTable("teams", [
+      {
+        id: "team-a",
+        team_name: "Team Alpha",
+        team_leader: "Alice",
+        members: ["Alice"],
+        password: "$2a$10$hashed",
+        route: [{ island_id: "i1", question_id: "q1" }],
+        email: "a@test.com",
+        progress: 0,
+        stage: "awaiting_code",
+        status: "active",
+        wrong_attempts: 0,
+        lock_until: null,
+        notice: null,
+        last_correct_at: null,
+        ...overrides,
+      },
+    ]);
     mockSupabase.__testing.setTable("islands", [ISLAND]);
     mockSupabase.__testing.setTable("questions", [QUESTION]);
     mockSupabase.__testing.setTable("announcements", []);
-    mockSupabase.__testing.setTable("event_config", [{
-      id: 1,
-      started_at: new Date(Date.now() - 1000).toISOString(),
-      duration_minutes: 120,
-      ended_at: null,
-    }]);
+    mockSupabase.__testing.setTable("event_config", [
+      {
+        id: 1,
+        started_at: new Date(Date.now() - 1000).toISOString(),
+        duration_minutes: 120,
+        ended_at: null,
+      },
+    ]);
     invalidateAllTeamStateCache();
   }
 
@@ -199,9 +205,7 @@ describe("team state contract (RPC path vs JS fallback)", () => {
     test("a question with no image yields an empty array, never null", async () => {
       // Most questions have no art; the client maps over this unconditionally.
       seed({ stage: "awaiting_puzzle" });
-      mockSupabase.__testing.setTable("questions", [
-        { ...QUESTION, que_img: null },
-      ]);
+      mockSupabase.__testing.setTable("questions", [{ ...QUESTION, que_img: null }]);
 
       const state = await getTeamStateForUser("team-a");
       expect(state.question_images).toEqual([]);

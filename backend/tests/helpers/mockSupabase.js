@@ -79,7 +79,8 @@ function createMockSupabase() {
       if (op === "insert") {
         const row = {
           ...payload,
-          id: payload.id || `mock-id-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          id:
+            payload.id || `mock-id-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         };
         table.push(row);
         return { data: clone(row), error: null, rows: [clone(row)] };

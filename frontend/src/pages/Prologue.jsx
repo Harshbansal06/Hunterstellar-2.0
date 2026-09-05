@@ -1,12 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { markPrologueSeen } from '../utils/prologueSeen'
-import {
-  PROLOGUE_EYEBROW,
-  PROLOGUE_PANELS,
-  PROLOGUE_TITLE,
-} from '../content/prologue'
+import { PROLOGUE_EYEBROW, PROLOGUE_PANELS, PROLOGUE_TITLE } from '../content/prologue'
 
 /**
  * The opening briefing, one beat at a time.
@@ -20,16 +14,24 @@ import {
  */
 export default function Prologue() {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const [index, setIndex] = useState(0)
 
   const panel = PROLOGUE_PANELS[index]
   const isLast = index === PROLOGUE_PANELS.length - 1
 
+  // Nothing to mark. The briefing is opt-in: it is reached from the Fragments
+  // tab and never auto-shown, so there is no "seen" flag to keep and no reason
+  // for a crew to be sent somewhere they did not ask to go. Leaving goes back
+  // to wherever they came from, falling back to the clue.
   const leave = useCallback(() => {
-    markPrologueSeen(user?.id)
-    navigate('/dashboard', { replace: true })
-  }, [navigate, user?.id])
+    // navigate(-1) is a no-op when this is the first entry in the tab (a shared
+    // link, a home-screen launch), which left Skip and "Begin the hunt" dead.
+    // React Router stamps its own index on history.state; 0 means no earlier
+    // in-app entry to return to.
+    const idx = window.history.state?.idx
+    if (typeof idx === 'number' && idx > 0) navigate(-1)
+    else navigate('/journey', { replace: true })
+  }, [navigate])
 
   const advance = useCallback(() => {
     if (isLast) leave()
@@ -121,7 +123,7 @@ export default function Prologue() {
             )}
             <button
               onClick={advance}
-              className="flex-1 h-[52px] bg-[#f6f6f6] text-text-inverse rounded-md font-display text-lg cursor-pointer"
+              className="motion-press h-[52px] flex-1 cursor-pointer rounded-md bg-accent font-display text-lg text-text-inverse focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               {isLast ? 'Begin the hunt' : 'Continue'}
             </button>

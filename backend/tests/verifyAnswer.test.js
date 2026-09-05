@@ -2,8 +2,9 @@ const request = require("supertest");
 const app = require("../app");
 const { signToken } = require("./helpers/tokens");
 
-
-jest.mock("../db/supabaseClient", () => require("./helpers/mockSupabase").createMockSupabase());
+jest.mock("../db/supabaseClient", () =>
+  require("./helpers/mockSupabase").createMockSupabase(),
+);
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
 const mockSupabase = require("../db/supabaseClient");
@@ -19,7 +20,10 @@ describe("Verify answer behavior", () => {
     team_leader: "Alice",
     members: ["Alice"],
     password: "$2a$10$hashed",
-    route: [{ island_id: "i1", question_id: "q1" }, { island_id: "i2", question_id: "q2" }],
+    route: [
+      { island_id: "i1", question_id: "q1" },
+      { island_id: "i2", question_id: "q2" },
+    ],
     email: "a@test.com",
     progress: 0,
     stage: "awaiting_puzzle",
@@ -29,10 +33,32 @@ describe("Verify answer behavior", () => {
     notice: null,
     last_correct_at: null,
   };
-  const island1 = { id: "i1", correct_code: "CODE1", clue_statement: "Clue 1", is_common_room: false };
-  const island2 = { id: "i2", correct_code: "CODE2", clue_statement: "Clue 2", is_common_room: false, clue_images: ["https://cdn.test/i2.jpg"], is_terminal: false };
-  const question1 = { id: "q1", question_statement: "Q1", question_answer: "ANS1", domain: "test" };
-  const question2 = { id: "q2", question_statement: "Q2", question_answer: "ANS2", domain: "test" };
+  const island1 = {
+    id: "i1",
+    correct_code: "CODE1",
+    clue_statement: "Clue 1",
+    is_common_room: false,
+  };
+  const island2 = {
+    id: "i2",
+    correct_code: "CODE2",
+    clue_statement: "Clue 2",
+    is_common_room: false,
+    clue_images: ["https://cdn.test/i2.jpg"],
+    is_terminal: false,
+  };
+  const question1 = {
+    id: "q1",
+    question_statement: "Q1",
+    question_answer: "ANS1",
+    domain: "test",
+  };
+  const question2 = {
+    id: "q2",
+    question_statement: "Q2",
+    question_answer: "ANS2",
+    domain: "test",
+  };
 
   function setup(config = {}) {
     const team = { ...baseTeam, ...config };
@@ -40,7 +66,14 @@ describe("Verify answer behavior", () => {
     mockSupabase.__testing.setTable("islands", [island1, island2]);
     mockSupabase.__testing.setTable("questions", [question1, question2]);
     mockSupabase.__testing.setTable("announcements", []);
-    mockSupabase.__testing.setTable("event_config", [{ id: 1, started_at: new Date(Date.now() - 1000).toISOString(), duration_minutes: 120, ended_at: null }]);
+    mockSupabase.__testing.setTable("event_config", [
+      {
+        id: 1,
+        started_at: new Date(Date.now() - 1000).toISOString(),
+        duration_minutes: 120,
+        ended_at: null,
+      },
+    ]);
     return team;
   }
 
@@ -86,7 +119,7 @@ describe("Verify answer behavior", () => {
     // {success:false} was not.
     expect(res.body.reason).toBe("wrong_answer");
 
-    const team = mockSupabase.__testing.getTable("teams").find(t => t.id === "team-a");
+    const team = mockSupabase.__testing.getTable("teams").find((t) => t.id === "team-a");
     expect(team.status).toBe("active");
     expect(team.lock_until).toBeNull();
     expect(team.progress).toBe(0);
@@ -103,13 +136,18 @@ describe("Verify answer behavior", () => {
     expect(res.body.state.team.progress).toBe(1);
     expect(res.body.state.stage).toBe("awaiting_code");
 
-    const team = mockSupabase.__testing.getTable("teams").find(t => t.id === "team-a");
+    const team = mockSupabase.__testing.getTable("teams").find((t) => t.id === "team-a");
     expect(team.progress).toBe(1);
     expect(team.stage).toBe("awaiting_code");
   });
 
   test("answering the fifth stop's puzzle (progress 4 -> 5) finishes team", async () => {
-    const finalIsland = { id: "i-final", correct_code: "FINAL", clue_statement: "Final", is_common_room: true };
+    const finalIsland = {
+      id: "i-final",
+      correct_code: "FINAL",
+      clue_statement: "Final",
+      is_common_room: true,
+    };
     setup({
       // The last stop carries a puzzle here, so answering it is what takes
       // progress to 5 and trips the finish branch in verify-answer.
@@ -159,7 +197,7 @@ describe("Verify answer behavior", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(false);
 
-    const team = mockSupabase.__testing.getTable("teams").find(t => t.id === "team-a");
+    const team = mockSupabase.__testing.getTable("teams").find((t) => t.id === "team-a");
     expect(team.progress).toBe(0);
     expect(team.stage).toBe("awaiting_puzzle");
     expect(team.status).toBe("active");

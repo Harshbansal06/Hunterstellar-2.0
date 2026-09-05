@@ -50,19 +50,23 @@ async function get(path, headers = {}) {
 function stats(latencies) {
   if (!latencies.length) return { min: 0, max: 0, avg: 0, p50: 0, p95: 0, p99: 0 };
   const sorted = [...latencies].sort((a, b) => a - b);
-  const percentile = (p) => sorted[Math.floor(sorted.length * p) - 1] || sorted[sorted.length - 1];
+  const percentile = (p) =>
+    sorted[Math.floor(sorted.length * p) - 1] || sorted[sorted.length - 1];
   return {
     min: sorted[0],
     max: sorted[sorted.length - 1],
     avg: Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length),
-    p50: percentile(0.50),
+    p50: percentile(0.5),
     p95: percentile(0.95),
     p99: percentile(0.99),
   };
 }
 
 function bar(label, s, unit = "ms") {
-  log("stats", `${label.padEnd(38)} min=${s.min}${unit}  avg=${s.avg}${unit}  p50=${s.p50}${unit}  p95=${s.p95}${unit}  p99=${s.p99}${unit}  max=${s.max}${unit}`);
+  log(
+    "stats",
+    `${label.padEnd(38)} min=${s.min}${unit}  avg=${s.avg}${unit}  p50=${s.p50}${unit}  p95=${s.p95}${unit}  p99=${s.p99}${unit}  max=${s.max}${unit}`,
+  );
 }
 
 // ─── phase 1: register 150 teams ──────────────────────────────────────
@@ -73,27 +77,36 @@ async function registerTeams() {
 
   const results = await Promise.allSettled(
     Array.from({ length: TEAM_COUNT }, (_, i) =>
-      post("/api/team/register", {
-        team_name: `${PREFIX}${i}`,
-        team_leader: `Leader ${i}`,
-        members: [`Leader ${i}`],
-        password: PASSWORD,
-        email: `loadtest${i}@test.local`,
-      }, {
-        "x-webhook-secret": WEBHOOK_SECRET,
-      }).then((res) => ({ status: res.status, i })),
+      post(
+        "/api/team/register",
+        {
+          team_name: `${PREFIX}${i}`,
+          team_leader: `Leader ${i}`,
+          members: [`Leader ${i}`],
+          password: PASSWORD,
+          email: `loadtest${i}@test.local`,
+        },
+        {
+          "x-webhook-secret": WEBHOOK_SECRET,
+        },
+      ).then((res) => ({ status: res.status, i })),
     ),
   );
 
-  const ok = results.filter((r) => r.status === "fulfilled" && r.value.status === 200).length;
-  const failed = results.filter((r) => r.status === "rejected" || (r.value && r.value.status !== 200));
+  const ok = results.filter(
+    (r) => r.status === "fulfilled" && r.value.status === 200,
+  ).length;
+  const failed = results.filter(
+    (r) => r.status === "rejected" || (r.value && r.value.status !== 200),
+  );
   const elapsed = Date.now() - t0;
 
-  log("register", `Done in ${elapsed}ms — ${ok}/${TEAM_COUNT} registered`);
+  log("register", `Done in ${elapsed}ms, ${ok}/${TEAM_COUNT} registered`);
   if (failed.length > 0) {
-    log("register", `${failed.length} failures — first 5:`);
+    log("register", `${failed.length} failures, first 5:`);
     failed.slice(0, 5).forEach((f) => {
-      if (f.status === "rejected") log("register", `  rejected: ${f.reason?.message || f.reason}`);
+      if (f.status === "rejected")
+        log("register", `  rejected: ${f.reason?.message || f.reason}`);
       else log("register", `  status ${f.value.status}`);
     });
   }
@@ -138,7 +151,10 @@ async function loginTeams() {
     }
 
     const loggedIn = tokens.filter(Boolean).length;
-    log("login", `batch ${batchNum}/${totalBatches} — ${loggedIn}/${TEAM_COUNT} tokens so far`);
+    log(
+      "login",
+      `batch ${batchNum}/${totalBatches}, ${loggedIn}/${TEAM_COUNT} tokens so far`,
+    );
 
     if (batchEnd < TEAM_COUNT) {
       log("login", `waiting ${DELAY_MS / 1000}s for rate limit window...`);
@@ -147,7 +163,10 @@ async function loginTeams() {
   }
 
   const elapsed = Date.now() - t0;
-  log("login", `Done in ${(elapsed / 1000).toFixed(1)}s — ${tokens.filter(Boolean).length}/${TEAM_COUNT} tokens obtained`);
+  log(
+    "login",
+    `Done in ${(elapsed / 1000).toFixed(1)}s, ${tokens.filter(Boolean).length}/${TEAM_COUNT} tokens obtained`,
+  );
   return tokens;
 }
 
@@ -161,7 +180,7 @@ async function measure(label, fn) {
 }
 
 async function runLoadPhase(label, requests) {
-  log("load", `── ${label} — ${requests.length} concurrent requests ──`);
+  log("load", `── ${label}, ${requests.length} concurrent requests ──`);
   const t0 = Date.now();
 
   const settled = await Promise.allSettled(requests);
@@ -190,43 +209,80 @@ async function runLoadPhase(label, requests) {
 async function runLoadTests(tokens) {
   const validTokens = tokens.filter(Boolean);
   if (validTokens.length === 0) {
-    log("load", "No tokens available — skipping authenticated load tests");
+    log("load", "No tokens available, skipping authenticated load tests");
     return [];
   }
 
   const results = [];
 
   // ── 3a: health endpoint (unauthenticated, baseline) ──
-  results.push(await runLoadPhase("GET /health (unauthenticated)", validTokens.map(() =>
-    get("/health").then(async (res) => ({ status: res.status, ms: Date.now() })).catch((e) => ({ status: 0, ms: Date.now() }))
-  )));
+  results.push(
+    await runLoadPhase(
+      "GET /health (unauthenticated)",
+      validTokens.map(() =>
+        get("/health")
+          .then(async (res) => ({ status: res.status, ms: Date.now() }))
+          .catch((e) => ({ status: 0, ms: Date.now() })),
+      ),
+    ),
+  );
 
   // ── 3b: /api/event (unauthenticated) ──
-  results.push(await runLoadPhase("GET /api/event (unauthenticated)", validTokens.map(() =>
-    get("/api/event").then(async (res) => ({ status: res.status, ms: Date.now() })).catch((e) => ({ status: 0, ms: Date.now() }))
-  )));
+  results.push(
+    await runLoadPhase(
+      "GET /api/event (unauthenticated)",
+      validTokens.map(() =>
+        get("/api/event")
+          .then(async (res) => ({ status: res.status, ms: Date.now() }))
+          .catch((e) => ({ status: 0, ms: Date.now() })),
+      ),
+    ),
+  );
 
   // ── 3c: /api/team/state (authenticated, read-only) ──
-  results.push(await runLoadPhase("GET /api/team/state (authenticated)", validTokens.map((token) =>
-    get("/api/team/state", { Authorization: `Bearer ${token}` })
-      .then(async (res) => ({ status: res.status, ms: Date.now() }))
-      .catch((e) => ({ status: 0, ms: Date.now() }))
-  )));
+  results.push(
+    await runLoadPhase(
+      "GET /api/team/state (authenticated)",
+      validTokens.map((token) =>
+        get("/api/team/state", { Authorization: `Bearer ${token}` })
+          .then(async (res) => ({ status: res.status, ms: Date.now() }))
+          .catch((e) => ({ status: 0, ms: Date.now() })),
+      ),
+    ),
+  );
 
   // ── 3d: /api/team/verify-code (write, each team submits wrong code) ──
-  results.push(await runLoadPhase("POST /api/team/verify-code (150 concurrent writes)", validTokens.map((token) =>
-    post("/api/team/verify-code", { enteredCode: "WRONG_LOADTEST" }, { Authorization: `Bearer ${token}` })
-      .then(async (res) => ({ status: res.status, ms: Date.now() }))
-      .catch((e) => ({ status: 0, ms: Date.now() }))
-  )));
+  results.push(
+    await runLoadPhase(
+      "POST /api/team/verify-code (150 concurrent writes)",
+      validTokens.map((token) =>
+        post(
+          "/api/team/verify-code",
+          { enteredCode: "WRONG_LOADTEST" },
+          { Authorization: `Bearer ${token}` },
+        )
+          .then(async (res) => ({ status: res.status, ms: Date.now() }))
+          .catch((e) => ({ status: 0, ms: Date.now() })),
+      ),
+    ),
+  );
 
   // ── 3e: 300 concurrent (double-submit simulation) ──
   const doubleTokens = [...validTokens, ...validTokens];
-  results.push(await runLoadPhase("POST /api/team/verify-code x2 (300 concurrent, double-submit)", doubleTokens.map((token) =>
-    post("/api/team/verify-code", { enteredCode: "WRONG_LOADTEST" }, { Authorization: `Bearer ${token}` })
-      .then(async (res) => ({ status: res.status, ms: Date.now() }))
-      .catch((e) => ({ status: 0, ms: Date.now() }))
-  )));
+  results.push(
+    await runLoadPhase(
+      "POST /api/team/verify-code x2 (300 concurrent, double-submit)",
+      doubleTokens.map((token) =>
+        post(
+          "/api/team/verify-code",
+          { enteredCode: "WRONG_LOADTEST" },
+          { Authorization: `Bearer ${token}` },
+        )
+          .then(async (res) => ({ status: res.status, ms: Date.now() }))
+          .catch((e) => ({ status: 0, ms: Date.now() })),
+      ),
+    ),
+  );
 
   // ── 3f: /api/team/state rapid re-poll (simulates 15s refresh cycle) ──
   const pollsPerTeam = 3;
@@ -236,11 +292,16 @@ async function runLoadTests(tokens) {
       pollRequests.push(
         get("/api/team/state", { Authorization: `Bearer ${token}` })
           .then(async (res) => ({ status: res.status, ms: Date.now() }))
-          .catch((e) => ({ status: 0, ms: Date.now() }))
+          .catch((e) => ({ status: 0, ms: Date.now() })),
       );
     }
   }
-  results.push(await runLoadPhase(`GET /api/team/state x${pollsPerTeam} (${pollRequests.length} total)`, pollRequests));
+  results.push(
+    await runLoadPhase(
+      `GET /api/team/state x${pollsPerTeam} (${pollRequests.length} total)`,
+      pollRequests,
+    ),
+  );
 
   return results;
 }
@@ -249,16 +310,21 @@ async function runLoadTests(tokens) {
 
 function printSummary(results) {
   console.log("\n" + "═".repeat(72));
-  console.log("  LOAD TEST SUMMARY — " + BASE_URL);
+  console.log("  LOAD TEST SUMMARY, " + BASE_URL);
   console.log("═".repeat(72));
 
   for (const r of results) {
-    const totalRequests = Object.values(r.byStatus).reduce((a, b) => a + b, 0) + r.rejected;
-    const successRate = ((totalRequests - r.rejected) / totalRequests * 100).toFixed(1);
+    const totalRequests =
+      Object.values(r.byStatus).reduce((a, b) => a + b, 0) + r.rejected;
+    const successRate = (((totalRequests - r.rejected) / totalRequests) * 100).toFixed(1);
     console.log(`\n  ${r.label}`);
-    console.log(`    Requests: ${totalRequests}  |  Success: ${successRate}%  |  Errors: ${r.rejected}  |  Wall: ${r.wallClock}ms`);
+    console.log(
+      `    Requests: ${totalRequests}  |  Success: ${successRate}%  |  Errors: ${r.rejected}  |  Wall: ${r.wallClock}ms`,
+    );
     console.log(`    Status: ${JSON.stringify(r.byStatus)}`);
-    console.log(`    Latency: avg=${r.stats.avg}ms  p50=${r.stats.p50}ms  p95=${r.stats.p95}ms  p99=${r.stats.p99}ms  max=${r.stats.max}ms`);
+    console.log(
+      `    Latency: avg=${r.stats.avg}ms  p50=${r.stats.p50}ms  p95=${r.stats.p95}ms  p99=${r.stats.p99}ms  max=${r.stats.max}ms`,
+    );
   }
 
   console.log("\n" + "═".repeat(72));
@@ -268,18 +334,18 @@ function printSummary(results) {
 
 async function main() {
   console.log("╔══════════════════════════════════════════════════════════════════╗");
-  console.log("║  Odyssey Live Load Test — 150 Concurrent Teams                 ║");
+  console.log("║  Odyssey Live Load Test, 150 Concurrent Teams                 ║");
   console.log("║  Target: " + BASE_URL.padEnd(52) + "║");
   console.log("╚══════════════════════════════════════════════════════════════════╝\n");
 
   // Phase 1: register
   const registered = await registerTeams();
   if (registered === 0) {
-    console.error("No teams registered — aborting.");
+    console.error("No teams registered, aborting.");
     process.exit(1);
   }
 
-  // Phase 2: login (slow — rate limited)
+  // Phase 2: login (slow, rate limited)
   const tokens = await loginTeams();
 
   // Phase 3: load test
@@ -289,7 +355,7 @@ async function main() {
   if (results.length > 0) printSummary(results);
 
   console.log("\nTest teams have prefix:", PREFIX);
-  console.log("They remain in the database — clean up manually if needed.");
+  console.log("They remain in the database, clean up manually if needed.");
 }
 
 main().catch((err) => {

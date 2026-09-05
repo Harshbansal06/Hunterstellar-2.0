@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+*-lock.json
+package-lock.json
+
+# Instruction and spec files: prose, not code. Reformatting them creates
+# churn in files that are read, not compiled.
+CLAUDE.md
+docs/

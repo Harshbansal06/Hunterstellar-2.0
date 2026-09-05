@@ -14,7 +14,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
     "@tailwindcss/vite": "^4.3.3",
-    "animejs": "^3.2.2",
+    "animejs": "^4.5.0",
     "axios": "^1.19.0",
     "lucide-react": "^1.31.0",
     "react": "^19.2.8",

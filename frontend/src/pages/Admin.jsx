@@ -4,7 +4,7 @@ import api from '../api/client'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { Input } from '../components/ui/Input'
-import supabase from '../supabaseClient'
+import supabase from '../api/supabase'
 export default function Admin() {
   const [teams, setTeams] = useState([])
   const [selected, setSelected] = useState(null)
@@ -169,7 +169,8 @@ export default function Admin() {
     )
   }
 
-  const filtered = statusFilter === 'all' ? teams : teams.filter((t) => t.status === statusFilter)
+  const filtered =
+    statusFilter === 'all' ? teams : teams.filter((t) => t.status === statusFilter)
   const stats = {
     total: teams.length,
     active: teams.filter((t) => t.status === 'active').length,
@@ -185,10 +186,18 @@ export default function Admin() {
           <span className="font-semibold text-sm tracking-wide">ODYSSEY ADMIN</span>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={handleStart} className="flex items-center gap-1.5">
+          <Button
+            variant="secondary"
+            onClick={handleStart}
+            className="flex items-center gap-1.5"
+          >
             <Play className="w-3.5 h-3.5" /> Start
           </Button>
-          <Button variant="danger" onClick={handleEnd} className="flex items-center gap-1.5">
+          <Button
+            variant="danger"
+            onClick={handleEnd}
+            className="flex items-center gap-1.5"
+          >
             <Square className="w-3.5 h-3.5" /> End
           </Button>
         </div>
@@ -220,7 +229,10 @@ export default function Admin() {
               filtered.map((team) => (
                 <button
                   key={team.id}
-                  onClick={() => { setSelected(team); setMessage('') }}
+                  onClick={() => {
+                    setSelected(team)
+                    setMessage('')
+                  }}
                   className={`w-full text-left px-4 py-3 border-b border-surface-alt flex items-center justify-between cursor-pointer transition-colors ${
                     selected?.id === team.id ? 'bg-surface' : 'hover:bg-surface/50'
                   }`}
@@ -231,11 +243,13 @@ export default function Admin() {
                         team.status === 'active'
                           ? 'bg-accent'
                           : team.status === 'locked'
-                          ? 'bg-amber'
-                          : 'bg-green'
+                            ? 'bg-amber'
+                            : 'bg-green'
                       }`}
                     />
-                    <span className="text-sm text-text-primary truncate max-w-[140px]">{team.team_name}</span>
+                    <span className="text-sm text-text-primary truncate max-w-[140px]">
+                      {team.team_name}
+                    </span>
                   </div>
                   <span className="text-xs text-text-muted">{team.progress}/5</span>
                 </button>
@@ -266,7 +280,9 @@ export default function Admin() {
           {selected ? (
             <div className="max-w-lg">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-text-primary">{selected.team_name}</h2>
+                <h2 className="text-lg font-semibold text-text-primary">
+                  {selected.team_name}
+                </h2>
                 <Badge status={selected.status} />
               </div>
 
@@ -277,7 +293,9 @@ export default function Admin() {
                 </div>
                 <div className="bg-surface rounded-lg p-3 border border-surface-alt">
                   <p className="text-text-muted text-xs mb-1">Stage</p>
-                  <p className="text-text-primary font-semibold capitalize">{selected.status}</p>
+                  <p className="text-text-primary font-semibold capitalize">
+                    {selected.status}
+                  </p>
                 </div>
               </div>
 
@@ -300,7 +318,12 @@ export default function Admin() {
                   placeholder="Send a message to this team..."
                   className="bg-surface border border-border rounded-lg px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
                 />
-                <Button type="submit" variant="secondary" disabled={!message.trim()} className="flex items-center gap-1.5 self-start">
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  disabled={!message.trim()}
+                  className="flex items-center gap-1.5 self-start"
+                >
                   <MessageSquare className="w-3.5 h-3.5" /> Send Message
                 </Button>
               </form>

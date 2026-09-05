@@ -32,23 +32,17 @@ function TestConsumer() {
 
 function ConsumerThatCallsLogin({ teamName, password }) {
   const { login } = useAuth()
-  return (
-    <button onClick={() => login(teamName, password)}>login</button>
-  )
+  return <button onClick={() => login(teamName, password)}>login</button>
 }
 
 function ConsumerThatCallsLogout() {
   const { logout } = useAuth()
-  return (
-    <button onClick={() => logout()}>logout</button>
-  )
+  return <button onClick={() => logout()}>logout</button>
 }
 
 function ConsumerThatCallsUpdate({ next }) {
   const { updateUser } = useAuth()
-  return (
-    <button onClick={() => updateUser(next)}>update</button>
-  )
+  return <button onClick={() => updateUser(next)}>update</button>
 }
 
 function ConsumerThatUpdatesTwice() {
@@ -57,9 +51,15 @@ function ConsumerThatUpdatesTwice() {
     <div>
       <span data-testid="user-id">{user?.id ?? 'none'}</span>
       <span data-testid="user-progress">{user?.progress ?? 'none'}</span>
-      <button onClick={() => updateUser({ id: 1, progress: 1, status: 'active' })}>to-1</button>
-      <button onClick={() => updateUser({ id: 1, progress: 1, status: 'active' })}>same</button>
-      <button onClick={() => updateUser({ id: 1, progress: 2, status: 'active' })}>to-2</button>
+      <button onClick={() => updateUser({ id: 1, progress: 1, status: 'active' })}>
+        to-1
+      </button>
+      <button onClick={() => updateUser({ id: 1, progress: 1, status: 'active' })}>
+        same
+      </button>
+      <button onClick={() => updateUser({ id: 1, progress: 2, status: 'active' })}>
+        to-2
+      </button>
     </div>
   )
 }
@@ -72,7 +72,9 @@ beforeEach(() => {
 describe('useAuth', () => {
   it('throws when used outside AuthProvider', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    expect(() => render(<TestConsumer />)).toThrow('useAuth must be used within AuthProvider')
+    expect(() => render(<TestConsumer />)).toThrow(
+      'useAuth must be used within AuthProvider',
+    )
     spy.mockRestore()
   })
 })
@@ -82,7 +84,7 @@ describe('AuthProvider', () => {
     render(
       <AuthProvider>
         <TestConsumer />
-      </AuthProvider>
+      </AuthProvider>,
     )
     expect(screen.getByTestId('token')).toHaveTextContent('null')
     expect(screen.getByTestId('user')).toHaveTextContent('null')
@@ -99,7 +101,7 @@ describe('AuthProvider', () => {
     render(
       <AuthProvider>
         <TestConsumer />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     expect(screen.getByTestId('token')).toHaveTextContent('stored-token')
@@ -113,7 +115,7 @@ describe('AuthProvider', () => {
     render(
       <AuthProvider>
         <TestConsumer />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     expect(screen.getByTestId('token')).toHaveTextContent('ok-token')
@@ -129,14 +131,17 @@ describe('login', () => {
     render(
       <AuthProvider>
         <ConsumerThatCallsLogin teamName="Celestials" password="secret" />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     await act(async () => {
       screen.getByText('login').click()
     })
 
-    expect(api.post).toHaveBeenCalledWith('/login', { team_name: 'Celestials', password: 'secret' })
+    expect(api.post).toHaveBeenCalledWith('/login', {
+      team_name: 'Celestials',
+      password: 'secret',
+    })
     expect(localStorage.getItem(TOKEN_KEY)).toBe('jwt-123')
     expect(JSON.parse(localStorage.getItem(USER_KEY))).toEqual(mockUser)
   })
@@ -151,7 +156,7 @@ describe('logout', () => {
         <ConsumerThatCallsLogin teamName="Celestials" password="secret" />
         <ConsumerThatCallsLogout />
         <TestConsumer />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     await act(async () => {
@@ -179,7 +184,7 @@ describe('updateUser', () => {
       <AuthProvider>
         <ConsumerThatCallsUpdate next={{ id: 1, progress: 3, status: 'active' }} />
         <TestConsumer />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     await act(async () => {
@@ -187,7 +192,11 @@ describe('updateUser', () => {
     })
 
     expect(screen.getByTestId('user')).not.toHaveTextContent('null')
-    expect(JSON.parse(localStorage.getItem(USER_KEY))).toEqual({ id: 1, progress: 3, status: 'active' })
+    expect(JSON.parse(localStorage.getItem(USER_KEY))).toEqual({
+      id: 1,
+      progress: 3,
+      status: 'active',
+    })
   })
 
   it('ignores falsy values', () => {
@@ -207,11 +216,15 @@ describe('updateUser', () => {
       <AuthProvider>
         <CaptureUpdate />
         <TestConsumer />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
-    act(() => { updateUserRef.current(null) })
-    act(() => { updateUserRef.current(undefined) })
+    act(() => {
+      updateUserRef.current(null)
+    })
+    act(() => {
+      updateUserRef.current(undefined)
+    })
 
     expect(screen.getByTestId('user')).toHaveTextContent('null')
   })
@@ -222,7 +235,7 @@ describe('updateUser', () => {
     render(
       <AuthProvider>
         <ConsumerThatUpdatesTwice />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     expect(screen.getByTestId('user-id')).toHaveTextContent('1')

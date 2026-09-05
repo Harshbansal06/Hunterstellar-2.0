@@ -1,7 +1,7 @@
 /**
  * The Hunterstellar wordmark, as live type.
  *
- * This replaces two SVG files that together weighed 1.13 MB — not because they
+ * This replaces two SVG files that together weighed 1.13 MB, not because they
  * were bitmaps, but because a distressed wordmark had been traced into
  * hundreds of thousands of micro-segments. The same look comes from the real
  * Bebas Neue glyphs plus a noise overlay, at zero bytes of asset, and it stays

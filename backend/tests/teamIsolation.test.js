@@ -2,7 +2,9 @@ const request = require("supertest");
 const app = require("../app");
 const { signToken } = require("./helpers/tokens");
 
-jest.mock("../db/supabaseClient", () => require("./helpers/mockSupabase").createMockSupabase());
+jest.mock("../db/supabaseClient", () =>
+  require("./helpers/mockSupabase").createMockSupabase(),
+);
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
 const mockSupabase = require("../db/supabaseClient");
@@ -49,17 +51,44 @@ describe("Team isolation (Team A cannot access Team B)", () => {
     notice: null,
     last_correct_at: null,
   };
-  const island1 = { id: "i1", correct_code: "CODE1", clue_statement: "Clue 1", is_common_room: false };
-  const island2 = { id: "i2", correct_code: "CODE2", clue_statement: "Clue 2", is_common_room: false };
-  const question1 = { id: "q1", question_statement: "Q1", question_answer: "ANS1", domain: "test" };
-  const question2 = { id: "q2", question_statement: "Q2", question_answer: "ANS2", domain: "test" };
+  const island1 = {
+    id: "i1",
+    correct_code: "CODE1",
+    clue_statement: "Clue 1",
+    is_common_room: false,
+  };
+  const island2 = {
+    id: "i2",
+    correct_code: "CODE2",
+    clue_statement: "Clue 2",
+    is_common_room: false,
+  };
+  const question1 = {
+    id: "q1",
+    question_statement: "Q1",
+    question_answer: "ANS1",
+    domain: "test",
+  };
+  const question2 = {
+    id: "q2",
+    question_statement: "Q2",
+    question_answer: "ANS2",
+    domain: "test",
+  };
 
   beforeEach(() => {
     mockSupabase.__testing.setTable("teams", [teamA, teamB]);
     mockSupabase.__testing.setTable("islands", [island1, island2]);
     mockSupabase.__testing.setTable("questions", [question1, question2]);
     mockSupabase.__testing.setTable("announcements", []);
-    mockSupabase.__testing.setTable("event_config", [{ id: 1, started_at: new Date(Date.now() - 1000).toISOString(), duration_minutes: 120, ended_at: null }]);
+    mockSupabase.__testing.setTable("event_config", [
+      {
+        id: 1,
+        started_at: new Date(Date.now() - 1000).toISOString(),
+        duration_minutes: 120,
+        ended_at: null,
+      },
+    ]);
   });
 
   test("Team A token returns Team A state, not Team B", async () => {
@@ -97,7 +126,10 @@ describe("Team isolation (Team A cannot access Team B)", () => {
 
   test("Team B verify-code operates on Team B only", async () => {
     // Team B is seeded mid-puzzle; verifying a code needs it awaiting one.
-    mockSupabase.__testing.setTable("teams", [teamA, { ...teamB, stage: "awaiting_code" }]);
+    mockSupabase.__testing.setTable("teams", [
+      teamA,
+      { ...teamB, stage: "awaiting_code" },
+    ]);
 
     const res = await request(app)
       .post("/api/team/verify-code")
@@ -110,11 +142,13 @@ describe("Team isolation (Team A cannot access Team B)", () => {
   });
 
   test("Team A verify-answer operates on Team A only", async () => {
-    mockSupabase.__testing.setTable("teams", [{
-      ...teamA,
-      progress: 0,
-      stage: "awaiting_puzzle",
-    }]);
+    mockSupabase.__testing.setTable("teams", [
+      {
+        ...teamA,
+        progress: 0,
+        stage: "awaiting_puzzle",
+      },
+    ]);
 
     const res = await request(app)
       .post("/api/team/verify-answer")

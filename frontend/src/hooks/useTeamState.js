@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import api from '../api/client'
-import supabase from '../supabaseClient'
-import { describeError } from '../utils/errorCopy'
+import supabase from '../api/supabase'
+import { describeError } from '../lib/errorCopy'
 
 const POLL_MS = 30000
 const REALTIME_DEBOUNCE_MS = 300
@@ -36,29 +36,26 @@ export function useTeamState({ teamId, enabled = true } = {}) {
     setLastUpdated(Date.now())
   }, [])
 
-  const refetch = useCallback(
-    async () => {
-      if (!enabled) return null
-      const startedAt = Date.now()
-      try {
-        const { data } = await api.get('/team/state')
-        if (cancelled.current) return null
-        // A submission that landed while this was in flight wins.
-        if (startedAt < latestWriteAt.current) return null
-        setState(data)
-        setError(null)
-        setLastUpdated(Date.now())
-        return data
-      } catch (err) {
-        if (cancelled.current) return null
-        // Keep the last good state on screen -- a failed background refresh
-        // must not blank a clue the team is standing in front of.
-        setError(describeError(err, 'state'))
-        return null
-      }
-    },
-    [enabled],
-  )
+  const refetch = useCallback(async () => {
+    if (!enabled) return null
+    const startedAt = Date.now()
+    try {
+      const { data } = await api.get('/team/state')
+      if (cancelled.current) return null
+      // A submission that landed while this was in flight wins.
+      if (startedAt < latestWriteAt.current) return null
+      setState(data)
+      setError(null)
+      setLastUpdated(Date.now())
+      return data
+    } catch (err) {
+      if (cancelled.current) return null
+      // Keep the last good state on screen -- a failed background refresh
+      // must not blank a clue the team is standing in front of.
+      setError(describeError(err, 'state'))
+      return null
+    }
+  }, [enabled])
 
   useEffect(() => {
     cancelled.current = false
