@@ -177,6 +177,45 @@ router.post(
       return res.json({ success: true, state });
     }
 
+    /**
+     * One lockout per station.
+     *
+     * The first wrong code at a stop costs the full lockout. Every wrong code
+     * after that, at the SAME stop, is refused without one. Moving on gives a
+     * fresh allowance, because it is a new station.
+     *
+     * The lockout exists to make brute-forcing a code expensive, and one
+     * served lockout already does that. Repeating it adds no deterrence and
+     * removes a crew from the event instead. Guessing stays bounded by the
+     * verify rate limiter, which is the control suited to that job.
+     *
+     * `locked_stops` is an integer[] of route indices. See migration 005. The
+     * `?? []` guard matters: a deployment where 005 has not been applied sends
+     * back undefined, and the correct behaviour there is the old one, lock
+     * every time, rather than crashing or never locking.
+     */
+    const lockedStops = Array.isArray(team.locked_stops) ? team.locked_stops : [];
+    const alreadyServed = lockedStops.includes(team.progress);
+
+    if (alreadyServed) {
+      await supabase
+        .from("teams")
+        .update({ wrong_attempts: team.wrong_attempts + 1 })
+        .eq("id", teamId);
+      invalidateTeamStateCache(teamId);
+
+      const state = await getTeamStateForUser(teamId);
+      return res.json({
+        success: false,
+        reason: "wrong_code",
+        // No lock_until. The client keys off this to tell the crew the code
+        // was wrong but that this one was free, which is worth saying: a crew
+        // that expects to be locked will otherwise stop trying.
+        locked: false,
+        state,
+      });
+    }
+
     const lockUntil = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000);
     await supabase
       .from("teams")
@@ -184,6 +223,7 @@ router.post(
         status: "locked",
         lock_until: lockUntil,
         wrong_attempts: team.wrong_attempts + 1,
+        locked_stops: [...lockedStops, team.progress],
       })
       .eq("id", teamId);
     invalidateTeamStateCache(teamId);
@@ -195,6 +235,7 @@ router.post(
     return res.json({
       success: false,
       reason: "wrong_code",
+      locked: true,
       lock_until: lockUntil,
       state,
     });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Wordmark } from '../components/brand/Wordmark'
 import { SESSION_NOTICE_KEY } from '../api/client'
@@ -18,6 +19,7 @@ export default function Login() {
 
   const [teamName, setTeamName] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
   // Read (and consume) in a lazy initialiser: an effect for this would set
@@ -123,15 +125,59 @@ export default function Login() {
                   aria-label="Shuttlecraft callsign"
                   className="w-full h-[60px] bg-surface border border-surface-alt rounded-md px-5 text-text-primary text-base placeholder:text-text-muted outline-none focus:border-accent disabled:opacity-60"
                 />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  placeholder="Rust Bucket Access Code"
-                  aria-label="Rust Bucket access code"
-                  className="w-full h-[60px] bg-surface border border-surface-alt rounded-md px-5 text-text-primary text-base placeholder:text-text-muted outline-none focus:border-accent disabled:opacity-60"
-                />
+                {/*
+                  The access code is emailed to a crew and typed in by whoever
+                  is holding the phone, often outdoors and in a hurry. Masking
+                  it protects nothing here (there is no shoulder-surfing threat
+                  model at a treasure hunt) and costs a real one: a mistyped
+                  character is invisible, and the penalty for guessing wrong is
+                  a failed login they cannot debug. So it can be revealed.
+
+                  Deliberately NOT `type=text` when shown: swapping the type
+                  keeps browser password managers working, which a value of
+                  `text` would break.
+                */}
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck="false"
+                    placeholder="Rust Bucket Access Code"
+                    aria-label="Rust Bucket access code"
+                    className="w-full h-[60px] bg-surface border border-surface-alt rounded-md pl-5 pr-14 text-text-primary text-base placeholder:text-text-muted outline-none focus:border-accent disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    disabled={loading}
+                    // aria-pressed says "this control is currently on", which
+                    // is what a toggle owes a screen reader. The label names
+                    // the ACTION, not the state, so it reads as a command.
+                    aria-pressed={showPassword}
+                    aria-label={showPassword ? 'Hide access code' : 'Show access code'}
+                    // -translate-y-1/2 with top-1/2 keeps it centred whatever
+                    // the field height becomes.
+                    className="motion-press absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center text-text-muted hover:text-text-primary disabled:opacity-60 focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
+                  >
+                    {showPassword ? (
+                      <EyeOff
+                        className="h-[18px] w-[18px]"
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <Eye
+                        className="h-[18px] w-[18px]"
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {error && (

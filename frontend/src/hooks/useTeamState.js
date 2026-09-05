@@ -40,7 +40,9 @@ export function useTeamState({ teamId, enabled = true } = {}) {
     if (!enabled) return null
     const startedAt = Date.now()
     try {
-      const { data } = await api.get('/team/state')
+      // `background: true` keeps the 30s poll out of the global progress bar.
+      // Without it the bar blinks at a crew every half minute all event.
+      const { data } = await api.get('/team/state', { background: true })
       if (cancelled.current) return null
       // A submission that landed while this was in flight wins.
       if (startedAt < latestWriteAt.current) return null

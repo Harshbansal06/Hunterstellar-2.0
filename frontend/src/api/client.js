@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { startLoading, stopLoading } from '../lib/loadingBus'
 
 export const SESSION_NOTICE_KEY = 'odyssey_session_notice'
 
@@ -22,6 +23,14 @@ const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
+  // Feeds the global progress bar. `background: true` opts a request out, which
+  // the 30s /team/state poll uses: a bar that blinks every half minute for the
+  // whole event tells a crew nothing.
+  if (!config.background) {
+    config.__counted = true
+    startLoading()
+  }
+
   try {
     const token = localStorage.getItem('odyssey_token')
     if (token) config.headers.Authorization = `Bearer ${token}`
@@ -32,9 +41,22 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+/**
+ * Paired with the counter above. Both arms decrement, and only when this
+ * request incremented: a request rejected before it was sent never counted,
+ * and decrementing for it would leave the bar permanently on.
+ */
+function settle(configLike) {
+  if (configLike?.__counted) stopLoading()
+}
+
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    settle(res.config)
+    return res
+  },
   (err) => {
+    settle(err.config)
     const status = err.response?.status
 
     // 401 is the only status that ends a session. A 403 from the event gate
