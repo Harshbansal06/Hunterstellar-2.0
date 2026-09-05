@@ -235,10 +235,42 @@ async function getTeamStateForUser(userId) {
   }
 
   if (status === "locked") {
+    /**
+     * The clue rides along with the lockout.
+     *
+     * Being locked means a crew cannot SUBMIT for a few minutes; it does not
+     * mean they stop having earned the clue. They were looking at it when they
+     * typed the wrong code, and withholding it now buys nothing: they have
+     * already seen it, so there is no secret left to protect. All it did was
+     * make the wait useless and stop them re-reading the thing they got wrong,
+     * which is the one productive act available during a lockout.
+     *
+     * Only fetched at `awaiting_code`, which in practice is always: a lockout
+     * comes from a wrong station code, and only that stage takes one. The
+     * guard is here so a lock applied by some future path cannot make this
+     * query meaningless.
+     */
+    let clue = null;
+    if (team.stage === "awaiting_code") {
+      const { data: island } = await supabase
+        .from("islands")
+        .select("clue_statement, clue_images, is_terminal")
+        .eq("id", currentStop.island_id)
+        .single();
+      if (island) {
+        clue = {
+          clue_statement: island.clue_statement,
+          clue_images: island.clue_images,
+          is_terminal: island.is_terminal ?? currentStop.question_id === null,
+        };
+      }
+    }
+
     const result = {
       team: safeTeam,
       stage: "locked",
       lock_until: team.lock_until,
+      ...(clue || {}),
       notice,
       announcement,
     };

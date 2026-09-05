@@ -86,6 +86,14 @@ export default function Dashboard() {
   const [mapOpen, setMapOpen] = useState(false)
   const [imagesOpen, setImagesOpen] = useState(false)
 
+  /**
+   * Set when a locked crew taps "Read clue". Purely local and deliberately not
+   * persisted: it is a view toggle, not progress, and a crew reopening the app
+   * mid-lockout should land on the countdown, which is the thing that answers
+   * "can I do anything yet".
+   */
+  const [readingClueWhileLocked, setReadingClueWhileLocked] = useState(false)
+
   // Set while a teammate is part-way through typing, so a poll cannot yank the
   // screen out from under them.
   const [inputDirty, setInputDirty] = useState(false)
@@ -129,8 +137,30 @@ export default function Dashboard() {
     ? Math.max(0, Math.round((rateLimitedUntil - now) / 1000))
     : 0
 
+  // Rides the same `now` tick as the rate-limit countdown rather than starting
+  // a second interval for a second clock.
+  const lockSecondsLeft = state?.lock_until
+    ? Math.max(0, Math.round((new Date(state.lock_until).getTime() - now) / 1000))
+    : 0
+
   const stage = state?.stage
   const progress = state?.team?.progress || 0
+
+  const locked = stage === 'locked'
+  // Declared here rather than beside the render branches because the status
+  // slot below needs it: while a crew reads the clue mid-lockout, the slot is
+  // the only thing still showing the countdown.
+  const lockedReading = locked && readingClueWhileLocked
+
+  // A new lockout, or the end of one, always returns to the countdown. Without
+  // this a crew that opened the clue during one lockout would still be looking
+  // at the clue when the next one landed, and never see the new timer.
+  const lockUntil = state?.lock_until ?? null
+  const [prevLockUntil, setPrevLockUntil] = useState(lockUntil)
+  if (lockUntil !== prevLockUntil) {
+    setPrevLockUntil(lockUntil)
+    if (readingClueWhileLocked) setReadingClueWhileLocked(false)
+  }
 
   useEffect(() => {
     if (state?.team) updateUser(state.team)
@@ -250,6 +280,17 @@ export default function Dashboard() {
         setInputDirty(false)
         if (data.state) adopt(data.state)
         else refetch()
+
+        // A crew that has already served this station's lockout gets the wrong
+        // code refused for free. Say so: a crew braced for another five
+        // minutes will otherwise stop trying, which is the opposite of what
+        // the rule is for. `=== false` and not `!data.locked`, so an older
+        // backend that sends neither field keeps the old silent behaviour.
+        if (data.locked === false) {
+          setSubmitError(
+            'That code was not accepted. No lockout this time, you have already served one at this station.',
+          )
+        }
         return false
       }
 
@@ -290,6 +331,25 @@ export default function Dashboard() {
    */
   const statusItems = useMemo(() => {
     const items = []
+
+    /**
+     * First, because while a crew is reading the clue mid-lockout this line is
+     * the only thing still telling them they cannot submit and how long is
+     * left. The countdown moved off-screen with the timer, so it has to come
+     * back somewhere, and the slot already auto-opens for `blocking`.
+     */
+    if (lockedReading) {
+      items.push({
+        id: 'locked',
+        tone: 'blocking',
+        label:
+          lockSecondsLeft > 0
+            ? `Locked for ${formatCountdown(lockSecondsLeft)}`
+            : 'Locked out',
+        detail: 'Read the clue again. Entry reopens when the timer runs out.',
+        action: { label: 'Show timer', onClick: () => setReadingClueWhileLocked(false) },
+      })
+    }
 
     if (rateSecondsLeft > 0) {
       items.push({
@@ -355,6 +415,8 @@ export default function Dashboard() {
     refetch,
     notice,
     announcement,
+    lockedReading,
+    lockSecondsLeft,
   ])
 
   // ---------------------------------------------------------------- render
@@ -367,7 +429,6 @@ export default function Dashboard() {
    */
   const atTerminal = progress >= STATION_COUNT
   const isTerminal = state?.is_terminal ?? atTerminal
-  const locked = stage === 'locked'
   const images = state?.clue_images || []
 
   // The reveal takes the whole frame, including the nav rail: it is a beat in
@@ -406,9 +467,40 @@ export default function Dashboard() {
   else if (rateSecondsLeft > 0)
     disabledHint = `Attempts reset in ${formatCountdown(rateSecondsLeft)}.`
 
+  // A locked crew can read but not submit. `inputsDisabled` already covers
+  // offline and rate-limited; the lock is the third reason and the strongest.
+  const submitBlocked = inputsDisabled || locked
+
   let body
-  if (locked) {
-    body = <LockoutScreen lockUntil={state.lock_until} onExpire={refetch} />
+  if (locked && !readingClueWhileLocked) {
+    body = (
+      <LockoutScreen
+        lockUntil={state.lock_until}
+        onExpire={refetch}
+        hasClue={Boolean(state.clue_statement)}
+        onReadClue={() => setReadingClueWhileLocked(true)}
+      />
+    )
+  } else if (lockedReading) {
+    // The real clue card, with submission closed off. Reusing ClueCard rather
+    // than building a read-only twin means the clue, its artwork and its
+    // terminal warning cannot drift between the two states.
+    body = (
+      <ClueCard
+        clue={state.clue_statement}
+        images={images}
+        progress={progress}
+        terminal={isTerminal}
+        cue={isTerminal ? 'Cross into the void' : 'Decrypt Signal'}
+        onSubmit={submitCode}
+        onOpenImages={() => setImagesOpen(true)}
+        loading={submitting}
+        error={submitError}
+        disabled
+        disabledHint="Locked out. The timer above has to run down first."
+        onDirtyChange={setInputDirty}
+      />
+    )
   } else if (stage === 'ready') {
     body = (
       <div className="flex-1 flex flex-col items-center justify-center px-8 text-center py-16 gap-3">
@@ -430,7 +522,7 @@ export default function Dashboard() {
         onOpenImages={() => setImagesOpen(true)}
         loading={submitting}
         error={submitError}
-        disabled={inputsDisabled}
+        disabled={submitBlocked}
         disabledHint={disabledHint}
         onDirtyChange={setInputDirty}
       />

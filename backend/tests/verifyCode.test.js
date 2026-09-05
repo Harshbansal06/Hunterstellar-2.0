@@ -8,10 +8,22 @@ jest.mock("../db/supabaseClient", () =>
 jest.mock("../utils/email", () => ({ sendWelcomeEmail: jest.fn() }));
 
 const mockSupabase = require("../db/supabaseClient");
+const { invalidateAllTeamStateCache } = require("../utils/teamState");
+const { verifyLimiter } = require("../middleware/rateLimit");
 
 describe("Verify code behavior", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockSupabase.__testing.reset();
+    // getTeamStateForUser caches per team id for 1s, and every test here uses
+    // "team-a". Without this, a suite that runs faster than the TTL leaks one
+    // test's state into the next and the file becomes order-dependent.
+    invalidateAllTeamStateCache();
+    // verifyLimiter allows 10 attempts per team per 15 minutes and its store
+    // outlives every test in this process. Adding a test used to be enough to
+    // push the file over the budget and 429 whichever test happened to be
+    // eleventh, which is a fragility that has nothing to do with what is
+    // being tested.
+    await verifyLimiter.resetKey("team-a");
   });
 
   const baseTeam = {
@@ -62,7 +74,7 @@ describe("Verify code behavior", () => {
     return team;
   }
 
-  test("wrong code returns locked, increments wrong_attempts, sets lock_until +7min", async () => {
+  test("wrong code returns locked, increments wrong_attempts, sets lock_until +5min", async () => {
     setup();
     const before = Date.now();
     const res = await request(app)
@@ -74,16 +86,68 @@ describe("Verify code behavior", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(false);
     expect(res.body.reason).toBe("wrong_code");
+    expect(res.body.locked).toBe(true);
     expect(res.body.lock_until).toBeDefined();
     const lockUntil = new Date(res.body.lock_until).getTime();
-    // 7 minutes, with a minute of slack either side for slow CI.
-    expect(lockUntil).toBeGreaterThanOrEqual(before + 6 * 60 * 1000);
-    expect(lockUntil).toBeLessThanOrEqual(after + 8 * 60 * 1000);
+    // 5 minutes, with a minute of slack either side for slow CI.
+    expect(lockUntil).toBeGreaterThanOrEqual(before + 4 * 60 * 1000);
+    expect(lockUntil).toBeLessThanOrEqual(after + 6 * 60 * 1000);
 
     const team = mockSupabase.__testing.getTable("teams").find((t) => t.id === "team-a");
     expect(team.status).toBe("locked");
     expect(team.wrong_attempts).toBe(1);
     expect(new Date(team.lock_until).getTime()).toBe(lockUntil);
+    // The stop is recorded, which is what spends this station's one lockout.
+    expect(team.locked_stops).toEqual([0]);
+  });
+
+  test("a second wrong code at the same stop is refused without locking", async () => {
+    // Already served this station's lockout.
+    setup({ locked_stops: [0], wrong_attempts: 1 });
+
+    const res = await request(app)
+      .post("/api/team/verify-code")
+      .set("Authorization", `Bearer ${signToken("team-a")}`)
+      .send({ enteredCode: "STILL-WRONG" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(false);
+    expect(res.body.reason).toBe("wrong_code");
+    expect(res.body.locked).toBe(false);
+    expect(res.body.lock_until).toBeUndefined();
+
+    const team = mockSupabase.__testing.getTable("teams").find((t) => t.id === "team-a");
+    expect(team.status).toBe("active");
+    expect(team.lock_until).toBeNull();
+    // Still counted, so the rate limiter and the admin view both see it.
+    expect(team.wrong_attempts).toBe(2);
+    // Not recorded twice.
+    expect(team.locked_stops).toEqual([0]);
+  });
+
+  test("a lockout served at an earlier stop does not cover the next one", async () => {
+    // Served a lockout at stop 0, now standing at stop 1.
+    setup({
+      locked_stops: [0],
+      progress: 1,
+      stage: "awaiting_code",
+      route: [
+        { island_id: "i1", question_id: "q1" },
+        { island_id: "i1", question_id: "q1" },
+      ],
+    });
+
+    const res = await request(app)
+      .post("/api/team/verify-code")
+      .set("Authorization", `Bearer ${signToken("team-a")}`)
+      .send({ enteredCode: "WRONG" });
+
+    expect(res.body.locked).toBe(true);
+    expect(res.body.lock_until).toBeDefined();
+
+    const team = mockSupabase.__testing.getTable("teams").find((t) => t.id === "team-a");
+    expect(team.status).toBe("locked");
+    expect(team.locked_stops).toEqual([0, 1]);
   });
 
   test("lock expires correctly (auto-unlock on state fetch after lock_until passes)", async () => {

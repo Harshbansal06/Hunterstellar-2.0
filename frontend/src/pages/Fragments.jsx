@@ -46,20 +46,28 @@ export default function Fragments() {
 
         <FragmentDeck unlocked={unlocked} />
 
-        <section className="flex w-full flex-col gap-3 border-t border-border/60 pt-6">
-          <h2 className="font-mono text-[12px] uppercase leading-[18px] tracking-[0.3em] text-text-muted">
-            Mission briefing
-          </h2>
-          <p className="text-[13px] leading-[21px] text-text-muted">
-            Why the hunt started, and what Vilgax is after. Nothing here is required
-            reading.
-          </p>
+        {/*
+          The heading and its explainer are gone. The button says what it does,
+          and a label plus a sentence telling a crew that the next control is
+          optional was three lines spent to introduce one.
+
+          The sheen and the dot field are what mark it as the one thing on this
+          screen that is worth a look but is not required: it reads as a
+          printed card rather than a control, so it invites without competing
+          with the fragments above it.
+        */}
+        <section className="w-full border-t border-border/60 pt-6">
           <Link
             to="/prologue"
-            className="motion-press flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface font-display text-[15px] tracking-[0.025em] text-text-primary no-underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
+            className="motion-press shimmer dot-field flex min-h-12 w-full items-center justify-center gap-2 rounded-md border border-accent/30 bg-surface font-display text-[15px] tracking-[0.025em] text-text-primary no-underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
           >
-            <BookOpen className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
-            Read the prologue
+            {/* Above the sheen, which sits at z-index 1. */}
+            <BookOpen
+              className="relative z-[2] h-4 w-4 text-accent"
+              strokeWidth={2}
+              aria-hidden="true"
+            />
+            <span className="relative z-[2]">Read the prologue</span>
           </Link>
         </section>
 

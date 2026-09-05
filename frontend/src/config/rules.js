@@ -13,7 +13,7 @@
  */
 
 /** How long a wrong station code costs a crew. */
-export const LOCKOUT_MINUTES = 7
+export const LOCKOUT_MINUTES = 5
 
 /** Attempts a crew shares across all its devices, per window. */
 export const VERIFY_ATTEMPTS = 10

@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /*
  * Ben 10 palette: Omnitrix green on near-black, white type, Null Void violet.
@@ -254,6 +254,84 @@
  * that trigger vestibular symptoms, so those are replaced. Durations collapse
  * toward instant.
  */
+/*
+ * A field of faint dots, for a surface that should read as printed rather than
+ * rendered. Two gradients at different scales so the pattern does not resolve
+ * into obvious rows at any one zoom level.
+ */
+.dot-field {
+  background-image:
+    radial-gradient(
+      circle at 1px 1px,
+      color-mix(in srgb, var(--color-accent) 22%, transparent) 1px,
+      transparent 0
+    ),
+    radial-gradient(
+      circle at 1px 1px,
+      color-mix(in srgb, var(--color-accent) 10%, transparent) 1px,
+      transparent 0
+    );
+  background-size:
+    10px 10px,
+    17px 17px;
+  background-position:
+    0 0,
+    5px 8px;
+}
+
+/*
+ * One slow highlight passing across a surface.
+ *
+ * Deliberately long (2.8s) and low-contrast: a fast, bright sweep is the
+ * vocabulary of a loading skeleton, and this element is not loading. At this
+ * speed it reads as a sheen catching the light, and it stays out of the way of
+ * the label it sits behind.
+ *
+ * `isolation: isolate` keeps the highlight from reaching the page behind it.
+ */
+@keyframes shimmerSweep {
+  from {
+    transform: translateX(-130%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(240%) skewX(-18deg);
+  }
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 45%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent) 26%, transparent),
+    transparent
+  );
+  animation: shimmerSweep 2.8s var(--ease-standard) infinite;
+}
+
+@keyframes globalLoaderSlide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+.global-loader-bar {
+  animation: globalLoaderSlide 1.1s var(--ease-standard) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-instant: 1ms;
@@ -273,6 +351,20 @@
   }
   .motion-sheet-out {
     animation: scrimOut 1ms linear forwards;
+  }
+
+  /* The sweep goes; the dot field stays. A static texture is not a vestibular
+     problem, a travelling highlight is. */
+  .shimmer::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  /* Still shows progress, just does not travel. */
+  .global-loader-bar {
+    animation: none;
+    width: 100%;
+    opacity: 0.6;
   }
 
   .animate-fadeIn,

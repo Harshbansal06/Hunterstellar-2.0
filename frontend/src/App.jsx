@@ -2,6 +2,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ErrorBoundary from './components/feedback/ErrorBoundary'
 import { OfflineBanner } from './components/feedback/OfflineBanner'
+import { GlobalLoader } from './components/feedback/GlobalLoader'
 import { AppRoutes } from './routes'
 
 /**
@@ -18,6 +19,7 @@ export default function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
+          <GlobalLoader />
           <OfflineBanner />
           <AppRoutes />
         </AuthProvider>
